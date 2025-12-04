@@ -57,39 +57,23 @@ const NEIGHBORS: CellCoord[] = [
 ]
 
 /**
- * 指定座標のセルを盤面上に必ず用意して返すヘルパー
- * まだ存在しない場合は地雷を含めて新規生成する
+ * 指定座標のセルを生成または取得する
+ * 生成時には地雷フラグのみを決め、隣接地雷数は後段で計算する
  */
-const ensureCell = (cells: Map<CellKey, CellState>, coord: CellCoord): CellState => {
+const getOrCreateCell = (
+  cells: Map<CellKey, CellState>,
+  coord: CellCoord,
+): CellState => {
   const key = toCellKey(coord)
   const existing = cells.get(key)
-  if (existing) return existing
-
-  const isMine = Math.random() < MINE_PROBABILITY
-  let adjacentMines = 0
-
-  for (const n of NEIGHBORS) {
-    const neighborCoord = { x: coord.x + n.x, y: coord.y + n.y }
-    const neighborKey = toCellKey(neighborCoord)
-    let neighbor = cells.get(neighborKey)
-    if (!neighbor) {
-      const neighborIsMine = Math.random() < MINE_PROBABILITY
-      neighbor = {
-        coord: neighborCoord,
-        isMine: neighborIsMine,
-        adjacentMines: 0,
-        revealed: false,
-        flagged: false,
-      }
-      cells.set(neighborKey, neighbor)
-    }
-    if (neighbor.isMine) adjacentMines += 1
+  if (existing) {
+    return existing
   }
 
   const cell: CellState = {
     coord,
-    isMine,
-    adjacentMines,
+    isMine: Math.random() < MINE_PROBABILITY,
+    adjacentMines: 0,
     revealed: false,
     flagged: false,
   }
@@ -98,7 +82,36 @@ const ensureCell = (cells: Map<CellKey, CellState>, coord: CellCoord): CellState
 }
 
 /**
+ * 指定セルの隣接地雷数を計算し、セルに反映する
+ */
+const refreshAdjacentMines = (
+  cells: Map<CellKey, CellState>,
+  coord: CellCoord,
+): CellState => {
+  const cell = getOrCreateCell(cells, coord)
+  let adjacentMines = 0
+
+  for (const n of NEIGHBORS) {
+    const neighborCoord = { x: coord.x + n.x, y: coord.y + n.y }
+    const neighbor = getOrCreateCell(cells, neighborCoord)
+    if (neighbor.isMine) adjacentMines += 1
+  }
+
+  cell.adjacentMines = adjacentMines
+  return cell
+}
+
+/**
+ * 指定座標のセルを盤面上に必ず用意して返すヘルパー
+ * ついでに最新の隣接地雷数を計算して反映する
+ */
+const ensureCell = (cells: Map<CellKey, CellState>, coord: CellCoord): CellState => {
+  return refreshAdjacentMines(cells, coord)
+}
+
+/**
  * 周囲に地雷がないセルを起点に、繋がる空白セル群を BFS で一括開示する
+ * 極端なケースでのフリーズを避けるため、探索回数に上限を設ける
  * @returns 開いたセル数
  */
 const revealArea = (
@@ -109,7 +122,11 @@ const revealArea = (
   const visited = new Set<CellKey>()
   let openedCount = 0
 
-  while (queue.length > 0) {
+  // 無限ループや極端な負荷を避けるための安全上限
+  const MAX_VISITS = 20_000
+
+  // キューが空になるか、訪問上限に達するまで探索
+  while (queue.length > 0 && visited.size < MAX_VISITS) {
     const coord = queue.shift()!
     const key = toCellKey(coord)
     if (visited.has(key)) continue
