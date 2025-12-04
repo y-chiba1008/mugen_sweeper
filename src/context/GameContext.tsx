@@ -236,7 +236,10 @@ const reducer = (state: GameState, action: GameAction): GameState => {
       if (cell.revealed) {
         return { ...state, cells }
       }
-      cell.flagged = !cell.flagged
+      cells.set(
+        toCellKey(action.coord),
+        { ...cell, flagged: !cell.flagged }
+      )
       return { ...state, cells }
     }
     case 'SET_HIGH_SCORE': {

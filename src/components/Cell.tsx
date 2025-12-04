@@ -24,7 +24,12 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
 
   const handleRightClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault()
-    if (state.gameOver) return
+    if (state.gameOver) {
+      return
+    }
+    if (cell.revealed) {
+      return
+    }
     toggleFlag(cell.coord)
   }
 
