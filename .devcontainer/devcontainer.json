@@ -1,0 +1,26 @@
+{
+    "name": "${localWorkspaceFolderBasename}",
+    "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "dbaeumer.vscode-eslint", // ESLint
+                "esbenp.prettier-vscode" // Prettier
+            ]
+        }
+    },
+    "mounts": [
+        // 証明書の共有
+        {
+            "source": "${localWorkspaceFolder}/.devcontainer/network",
+            "target": "/usr/local/share/ca-certificates",
+            "type": "bind"
+        }
+    ],
+    // 証明書を認識
+    "postCreateCommand": "sudo update-ca-certificates",
+    "runArgs": [
+        // コンテナ名を指定
+        "--name", "${localWorkspaceFolderBasename}"
+    ]
+}
