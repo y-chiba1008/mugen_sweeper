@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
 
@@ -13,10 +13,22 @@ const CELL_SIZE = 32
  */
 export const BoardView: React.FC = () => {
   const { state } = useGame()
+  const boardContainerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null)
+
+  // コンポーネントマウント時に中央に配置するためのオフセットを計算
+  useEffect(() => {
+    if (boardContainerRef.current) {
+      const { clientWidth, clientHeight } = boardContainerRef.current
+      // (0,0) のセルが中央に来るようにオフセットを計算
+      const initialOffsetX = clientWidth / 2 - (CELL_SIZE * scale) / 2
+      const initialOffsetY = clientHeight / 2 - (CELL_SIZE * scale) / 2
+      setOffset({ x: initialOffsetX, y: initialOffsetY })
+    }
+  }, [scale])
 
   /**
    * 盤面ドラッグ開始時のハンドラ
@@ -96,6 +108,7 @@ export const BoardView: React.FC = () => {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         id="board-view-container"
+        ref={boardContainerRef}
       >
         <div
           style={{
