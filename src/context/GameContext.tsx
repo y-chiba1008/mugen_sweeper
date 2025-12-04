@@ -67,7 +67,7 @@ const getOrCreateCell = (
   const key = toCellKey(coord)
   const existing = cells.get(key)
   if (existing) {
-    return existing
+    return { ...existing }
   }
 
   const cell: CellState = {
@@ -97,8 +97,8 @@ const refreshAdjacentMines = (
     if (neighbor.isMine) adjacentMines += 1
   }
 
-  cell.adjacentMines = adjacentMines
-  return cell
+  cells.set(toCellKey(coord), { ...cell, adjacentMines })
+  return cells.get(toCellKey(coord))!
 }
 
 /**
@@ -135,10 +135,13 @@ const revealArea = (
     const cell = ensureCell(cells, coord)
     if (cell.revealed || cell.flagged) continue
 
-    cell.revealed = true
+    cells.set(
+      key,
+      { ...cell, revealed: true }
+    )
     openedCount += 1
 
-    if (!cell.isMine && cell.adjacentMines === 0) {
+    if (!cells.get(key)!.isMine && cells.get(key)!.adjacentMines === 0) {
       for (const n of NEIGHBORS) {
         queue.push({ x: coord.x + n.x, y: coord.y + n.y })
       }
@@ -191,43 +194,51 @@ const reducer = (state: GameState, action: GameAction): GameState => {
         return { ...state, cells }
       }
 
-      let { score, lives, nextLifeScoreThreshold } = state
-      let gameOver: boolean = state.gameOver
-      let openedCount = 0
+      let currentScore = state.score;
+      let currentLives = state.lives;
+      let currentNextLifeScoreThreshold = state.nextLifeScoreThreshold;
+      let currentGameOver: boolean = state.gameOver;
+      let openedCount = 0;
 
       if (cell.isMine) {
-        cell.revealed = true
-        lives -= 1
-        gameOver = lives <= 0
-        openedCount = 0
+        cells.set(
+          toCellKey(action.coord),
+          { ...cell, revealed: true }
+        )
+        currentLives -= 1;
+        currentGameOver = currentLives <= 0;
+        openedCount = 0;
       } else if (cell.adjacentMines > 0) {
-        cell.revealed = true
-        openedCount = 1
+        cells.set(
+          toCellKey(action.coord),
+          { ...cell, revealed: true }
+        )
+        openedCount = 1;
       } else {
-        const result = revealArea(cells, action.coord)
-        openedCount = result.openedCount
+        const result = revealArea(cells, action.coord);
+        openedCount = result.openedCount;
       }
 
       if (openedCount > 0) {
-        score += openedCount
+        currentScore += openedCount;
       }
 
-      while (score >= nextLifeScoreThreshold) {
-        lives += 1
-        nextLifeScoreThreshold += LIFE_BONUS_THRESHOLD
+      while (currentScore >= currentNextLifeScoreThreshold) {
+        currentLives += 1;
+        currentNextLifeScoreThreshold += LIFE_BONUS_THRESHOLD;
       }
 
-      const highScore = Math.max(state.highScore, score)
+      const highScore = Math.max(state.highScore, currentScore);
 
       return {
         ...state,
         cells,
-        score,
-        lives,
-        nextLifeScoreThreshold,
+        score: currentScore,
+        lives: currentLives,
+        nextLifeScoreThreshold: currentNextLifeScoreThreshold,
         highScore,
-        gameOver,
-      }
+        gameOver: currentGameOver,
+      };
     }
     case 'TOGGLE_FLAG': {
       if (state.gameOver) return state
