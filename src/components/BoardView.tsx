@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
 
@@ -48,14 +48,26 @@ export const BoardView: React.FC = () => {
   /**
    * ホイール操作によるズームイン/アウトのハンドラ
    */
-  const handleWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? -0.1 : 0.1
     setScale((prev) => {
       const next = Math.min(2, Math.max(0.5, prev + delta))
       return next
     })
-  }
+  }, [setScale])
+
+  useEffect(() => {
+    const targetDiv = document.getElementById('board-view-container')
+    if (targetDiv) {
+      targetDiv.addEventListener('wheel', handleWheel, { passive: false })
+    }
+    return () => {
+      if (targetDiv) {
+        targetDiv.removeEventListener('wheel', handleWheel)
+      }
+    }
+  }, [handleWheel])
 
   const cellsArray = useMemo(
     () => Array.from(state.cells.entries()).map(([key, cell]) => ({ key, cell })),
@@ -83,7 +95,7 @@ export const BoardView: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
-        onWheel={handleWheel}
+        id="board-view-container"
       >
         <div
           style={{
