@@ -22,4 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.devcontainer/network/Turbo_5G_FUYU_CA.crt
+.devcontainer/network/*
+.cursor/*
