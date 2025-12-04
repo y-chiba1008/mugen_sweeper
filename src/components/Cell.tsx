@@ -48,8 +48,8 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
         'flex h-8 w-8 items-center justify-center border border-slate-400 text-xs',
         'select-none',
         cell.revealed
-          ? 'bg-slate-200'
-          : 'bg-slate-300 hover:bg-slate-200 active:bg-slate-100',
+          ? '!bg-white'
+          : '!bg-gray-400 hover:!bg-gray-300 active:!bg-gray-200',
       )}
     >
       {content}
