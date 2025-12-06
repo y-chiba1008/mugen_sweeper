@@ -24,11 +24,11 @@ export const BoardView: React.FC = () => {
     if (boardContainerRef.current) {
       const { clientWidth, clientHeight } = boardContainerRef.current
       // (0,0) のセルが中央に来るようにオフセットを計算
-      const initialOffsetX = clientWidth / 2 - (CELL_SIZE * scale) / 2
-      const initialOffsetY = clientHeight / 2 - (CELL_SIZE * scale) / 2
+      const initialOffsetX = clientWidth / 2 - CELL_SIZE / 2
+      const initialOffsetY = clientHeight / 2 - CELL_SIZE / 2
       setOffset({ x: initialOffsetX, y: initialOffsetY })
     }
-  }, [scale])
+  }, []) // 依存配列を空にして、マウント時にのみ実行
 
   /**
    * 盤面ドラッグ開始時のハンドラ
@@ -60,20 +60,35 @@ export const BoardView: React.FC = () => {
   /**
    * ホイール操作によるズームイン/アウトのハンドラ
    */
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? -0.1 : 0.1
-    setScale((prev) => {
-      const next = Math.min(2, Math.max(0.5, prev + delta))
-      return next
-    })
-  }, [setScale])
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault()
+      if (!boardContainerRef.current) return
+
+      const rect = boardContainerRef.current.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      const newScale = Math.min(2, Math.max(0.5, scale + delta))
+      const ratio = newScale / scale
+
+      setOffset((prev) => ({
+        x: mouseX - (mouseX - prev.x) * ratio,
+        y: mouseY - (mouseY - prev.y) * ratio,
+      }))
+      setScale(newScale)
+    },
+    [scale],
+  )
 
   useEffect(() => {
     const targetDiv = document.getElementById('board-view-container')
     if (targetDiv) {
+      // wheel イベントリスナーを targetDiv に設定
       targetDiv.addEventListener('wheel', handleWheel, { passive: false })
     }
+
     return () => {
       if (targetDiv) {
         targetDiv.removeEventListener('wheel', handleWheel)
@@ -116,7 +131,7 @@ export const BoardView: React.FC = () => {
             left: offset.x,
             top: offset.y,
             transform: `scale(${scale})`,
-            transformOrigin: 'center center',
+            transformOrigin: '0 0',
           }}
         >
           {renderedCells}
