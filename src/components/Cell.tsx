@@ -50,7 +50,7 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
       onClick={handleClick}
       onContextMenu={handleRightClick}
       className={cn(
-        'flex h-8 w-8 items-center justify-center border border-slate-400 text-xs',
+        'flex h-[30px] w-[30px] items-center justify-center border-t border-l border-slate-400 text-xs',
         'select-none',
         cell.revealed
           ? '!bg-white'
