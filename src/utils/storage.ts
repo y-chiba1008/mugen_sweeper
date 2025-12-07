@@ -69,16 +69,15 @@ const computeChecksum = (data: Omit<SerializedGameState, 'checksum'>): number =>
 export const saveGameState = (state: SerializedGameState): void => {
   if (typeof window === 'undefined') return
 
-  const dataWithoutChecksum: Omit<SerializedGameState, 'checksum'> = {
-    ...state,
-    checksum: undefined,
-  } as SerializedGameState
-
-  const checksum = computeChecksum(dataWithoutChecksum)
-
-  const payload: SerializedGameState = {
+  const dataWithVersion: Omit<SerializedGameState, 'checksum'> = {
     ...state,
     version: SAVE_DATA_VERSION,
+  }
+
+  const checksum = computeChecksum(dataWithVersion)
+
+  const payload: SerializedGameState = {
+    ...dataWithVersion,
     checksum,
   }
 
