@@ -1,13 +1,14 @@
-import {
-  LIFE_BONUS_THRESHOLD,
-  INITIAL_LIVES,
-  MINE_PROBABILITY,
-} from '../config/gameConfig'
+import { LIFE_BONUS_THRESHOLD, INITIAL_LIVES } from '../config/gameConfig'
 import type { CellCoord, CellKey, CellState, GameState } from '../types/game'
 import { toCellKey } from '../types/game'
 import type { SerializedGameState } from '../utils/storage'
 import { loadGameState, saveGameState } from '../utils/storage'
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
+import {
+  defaultIsMineGenerator,
+  revealCell as revealCellLogic,
+  toggleFlag as toggleFlagLogic,
+} from '../logic/gameLogic'
 
 /**
  * ゲーム状態を更新するためのアクションの種類
@@ -40,115 +41,6 @@ const initialState: GameState = {
   nextLifeScoreThreshold: LIFE_BONUS_THRESHOLD,
   gameOver: false,
   isLoaded: false,
-}
-
-/**
- * 隣接 8 マスの相対座標一覧
- */
-const NEIGHBORS: CellCoord[] = [
-  { x: -1, y: -1 },
-  { x: 0, y: -1 },
-  { x: 1, y: -1 },
-  { x: -1, y: 0 },
-  { x: 1, y: 0 },
-  { x: -1, y: 1 },
-  { x: 0, y: 1 },
-  { x: 1, y: 1 },
-]
-
-/**
- * 指定座標のセルを生成または取得する
- * 生成時には地雷フラグのみを決め、隣接地雷数は後段で計算する
- */
-const getOrCreateCell = (
-  cells: Map<CellKey, CellState>,
-  coord: CellCoord,
-): CellState => {
-  const key = toCellKey(coord)
-  const existing = cells.get(key)
-  if (existing) {
-    return { ...existing }
-  }
-
-  const cell: CellState = {
-    coord,
-    isMine: Math.random() < MINE_PROBABILITY,
-    adjacentMines: 0,
-    revealed: false,
-    flagged: false,
-  }
-  cells.set(key, cell)
-  return cell
-}
-
-/**
- * 指定セルの隣接地雷数を計算し、セルに反映する
- */
-const refreshAdjacentMines = (
-  cells: Map<CellKey, CellState>,
-  coord: CellCoord,
-): CellState => {
-  const cell = getOrCreateCell(cells, coord)
-  let adjacentMines = 0
-
-  for (const n of NEIGHBORS) {
-    const neighborCoord = { x: coord.x + n.x, y: coord.y + n.y }
-    const neighbor = getOrCreateCell(cells, neighborCoord)
-    if (neighbor.isMine) adjacentMines += 1
-  }
-
-  cells.set(toCellKey(coord), { ...cell, adjacentMines })
-  return cells.get(toCellKey(coord))!
-}
-
-/**
- * 指定座標のセルを盤面上に必ず用意して返すヘルパー
- * ついでに最新の隣接地雷数を計算して反映する
- */
-const ensureCell = (cells: Map<CellKey, CellState>, coord: CellCoord): CellState => {
-  return refreshAdjacentMines(cells, coord)
-}
-
-/**
- * 周囲に地雷がないセルを起点に、繋がる空白セル群を BFS で一括開示する
- * 極端なケースでのフリーズを避けるため、探索回数に上限を設ける
- * @returns 開いたセル数
- */
-const revealArea = (
-  cells: Map<CellKey, CellState>,
-  startCoord: CellCoord,
-): { openedCount: number } => {
-  const queue: CellCoord[] = [startCoord]
-  const visited = new Set<CellKey>()
-  let openedCount = 0
-
-  // 無限ループや極端な負荷を避けるための安全上限
-  const MAX_VISITS = 20_000
-
-  // キューが空になるか、訪問上限に達するまで探索
-  while (queue.length > 0 && visited.size < MAX_VISITS) {
-    const coord = queue.shift()!
-    const key = toCellKey(coord)
-    if (visited.has(key)) continue
-    visited.add(key)
-
-    const cell = ensureCell(cells, coord)
-    if (cell.revealed || cell.flagged) continue
-
-    cells.set(
-      key,
-      { ...cell, revealed: true }
-    )
-    openedCount += 1
-
-    if (!cells.get(key)!.isMine && cells.get(key)!.adjacentMines === 0) {
-      for (const n of NEIGHBORS) {
-        queue.push({ x: coord.x + n.x, y: coord.y + n.y })
-      }
-    }
-  }
-
-  return { openedCount }
 }
 
 /**
@@ -187,71 +79,10 @@ const reducer = (state: GameState, action: GameAction): GameState => {
       return { ...initialState, highScore: state.highScore, isLoaded: true }
     }
     case 'REVEAL_CELL': {
-      if (state.gameOver) return state
-      const cells = new Map(state.cells)
-      const cell = ensureCell(cells, action.coord)
-      if (cell.revealed || cell.flagged) {
-        return { ...state, cells }
-      }
-
-      let currentScore = state.score;
-      let currentLives = state.lives;
-      let currentNextLifeScoreThreshold = state.nextLifeScoreThreshold;
-      let currentGameOver: boolean = state.gameOver;
-      let openedCount = 0;
-
-      if (cell.isMine) {
-        cells.set(
-          toCellKey(action.coord),
-          { ...cell, revealed: true }
-        )
-        currentLives -= 1;
-        currentGameOver = currentLives <= 0;
-        openedCount = 0;
-      } else if (cell.adjacentMines > 0) {
-        cells.set(
-          toCellKey(action.coord),
-          { ...cell, revealed: true }
-        )
-        openedCount = 1;
-      } else {
-        const result = revealArea(cells, action.coord);
-        openedCount = result.openedCount;
-      }
-
-      if (openedCount > 0) {
-        currentScore += openedCount;
-      }
-
-      while (currentScore >= currentNextLifeScoreThreshold) {
-        currentLives += 1;
-        currentNextLifeScoreThreshold += LIFE_BONUS_THRESHOLD;
-      }
-
-      const highScore = Math.max(state.highScore, currentScore);
-
-      return {
-        ...state,
-        cells,
-        score: currentScore,
-        lives: currentLives,
-        nextLifeScoreThreshold: currentNextLifeScoreThreshold,
-        highScore,
-        gameOver: currentGameOver,
-      };
+      return revealCellLogic(state, action.coord, defaultIsMineGenerator)
     }
     case 'TOGGLE_FLAG': {
-      if (state.gameOver) return state
-      const cells = new Map(state.cells)
-      const cell = ensureCell(cells, action.coord)
-      if (cell.revealed) {
-        return { ...state, cells }
-      }
-      cells.set(
-        toCellKey(action.coord),
-        { ...cell, flagged: !cell.flagged }
-      )
-      return { ...state, cells }
+      return toggleFlagLogic(state, action.coord, defaultIsMineGenerator)
     }
     case 'SET_HIGH_SCORE': {
       if (action.highScore <= state.highScore) return state
