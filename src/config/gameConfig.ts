@@ -1,4 +1,4 @@
-export const MINE_PROBABILITY = 0.15
+export const MINE_PROBABILITY = 0.2
 
 export const INITIAL_LIVES = 3
 

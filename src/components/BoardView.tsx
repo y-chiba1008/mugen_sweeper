@@ -97,12 +97,19 @@ export const BoardView: React.FC = () => {
   }, [handleWheel])
 
   const cellsArray = useMemo(
-    () => Array.from(state.cells.entries()).map(([key, cell]) => ({ key, cell })),
+    () => {
+        const start = performance.now()
+        const result = Array.from(state.cells.entries()).map(([key, cell]) => ({ key, cell }))
+        const end = performance.now()
+        console.log(`[Performance] useMemo(cellsArray) took ${end - start}ms`)
+        return result
+    },
     [state.cells],
   )
 
   const renderedCells = useMemo(() => {
-    return cellsArray.map(({ key, cell }) => {
+    const start = performance.now()
+    const result = cellsArray.map(({ key, cell }) => {
       const { x, y } = cell.coord
       const left = x * CELL_SIZE
       const top = y * CELL_SIZE
@@ -112,6 +119,9 @@ export const BoardView: React.FC = () => {
         </div>
       )
     })
+    const end = performance.now()
+    console.log(`[Performance] useMemo(renderedCells) took ${end - start}ms`)
+    return result
   }, [cellsArray])
 
   return (

@@ -1,6 +1,7 @@
 import { LIFE_BONUS_THRESHOLD, MINE_PROBABILITY } from '../config/gameConfig'
 import type { CellCoord, CellKey, CellState, GameState } from '../types/game'
 import { toCellKey } from '../types/game'
+import { measureTime } from '../utils/performance'
 
 // --- 定数 ---
 
@@ -68,7 +69,7 @@ export const calculateAdjacentMines = (
 /**
  * 周囲に地雷がないセルを起点に、繋がる空白セル群を BFS で一括開示する
  */
-export const revealArea = (
+const _revealArea = (
   cells: Map<CellKey, CellState>,
   startCoord: CellCoord,
   isMineGenerator: IsMineGenerator,
@@ -111,8 +112,9 @@ export const revealArea = (
 
   return { openedCount }
 }
+export const revealArea = measureTime(_revealArea, 'revealArea')
 
-export const revealCell = (
+const _revealCell = (
   state: GameState,
   coord: CellCoord,
   isMineGenerator: IsMineGenerator,
@@ -177,8 +179,9 @@ export const revealCell = (
     gameOver: currentGameOver,
   }
 }
+export const revealCell = measureTime(_revealCell, 'revealCell')
 
-export const toggleFlag = (
+const _toggleFlag = (
   state: GameState,
   coord: CellCoord,
   isMineGenerator: IsMineGenerator,
@@ -195,3 +198,4 @@ export const toggleFlag = (
   cells.set(toCellKey(coord), updatedCell)
   return { ...state, cells }
 }
+export const toggleFlag = measureTime(_toggleFlag, 'toggleFlag')
