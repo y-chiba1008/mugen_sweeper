@@ -1,4 +1,3 @@
-import './App.css'
 import { GameProvider } from './context/GameContext'
 import { BoardView } from './components/BoardView'
 import { Hud } from './components/Hud'
@@ -10,9 +9,9 @@ import { Hud } from './components/Hud'
 function App() {
   return (
     <GameProvider>
-      <div className="app-root">
+      <div className="flex flex-col h-full">
         <Hud />
-        <main className="board-container">
+        <main className="flex-1">
           <BoardView />
         </main>
       </div>

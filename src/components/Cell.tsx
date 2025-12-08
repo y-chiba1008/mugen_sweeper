@@ -10,6 +10,17 @@ type CellProps = {
   cell: CellState
 }
 
+const mineCountColor: { [key: number]: string } = {
+  1: 'text-blue-500',
+  2: 'text-green-500',
+  3: 'text-red-500',
+  4: 'text-blue-900',
+  5: 'text-yellow-700',
+  6: 'text-teal-500',
+  7: 'text-black',
+  8: 'text-gray-500',
+}
+
 /**
  * 1 マス分のセルを表示するコンポーネント
  * 左クリックで開示、右クリックでフラグをトグルする
@@ -50,10 +61,10 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
       onClick={handleClick}
       onContextMenu={handleRightClick}
       className={cn(
-        'flex h-[30px] w-[30px] items-center justify-center border-t border-l border-slate-400 text-xs',
+        'flex h-[30px] w-[30px] items-center justify-center border-t border-l border-slate-400 text-xs font-bold',
         'select-none',
         cell.revealed
-          ? '!bg-white'
+          ? ['!bg-white', mineCountColor[cell.adjacentMines]]
           : '!bg-gray-400 hover:!bg-gray-300 active:!bg-gray-200',
       )}
     >
@@ -61,5 +72,3 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
     </button>
   )
 }
-
-
