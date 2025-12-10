@@ -19,6 +19,13 @@
 - **スタイリング:** Tailwind CSS
 - **状態管理:** Context API (Redux や Zustand は現時点では使用しません)
 
+### プロジェクト管理
+
+このプロジェクトは GitHub にてソース管理・プロジェクト管理を行う
+
+- **リポジトリ:** y-chiba1008/mugen_sweeper
+- **プロジェクト管理:** mugen sweeper project (https://github.com/users/y-chiba1008/projects/2)
+
 ### 📏 コーディング規約とベストプラクティス
 
 1.  **コンポーネント構造:**
@@ -33,5 +40,5 @@
 5.  **テスト:**
     - 新しい機能やバグ修正には、**Vitest** を使用したユニットテストを生成してください。
     - テストファイルの命名規則は以下の通りとします。
-        - **ロジックファイル:** `*.test.ts` （例: `gameLogic.test.ts`）
-        - **Reactコンポーネント:** `*.test.tsx` （例: `BoardView.test.tsx`）
+      - **ロジックファイル:** `*.test.ts` （例: `gameLogic.test.ts`）
+      - **React コンポーネント:** `*.test.tsx` （例: `BoardView.test.tsx`）
