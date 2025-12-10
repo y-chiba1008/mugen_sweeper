@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
+import { toCellKey } from '../types/game'
 
 /** 1 セルあたりの表示サイズ（px） */
 const CELL_SIZE = 32
@@ -96,33 +97,38 @@ export const BoardView: React.FC = () => {
     }
   }, [handleWheel])
 
-  const cellsArray = useMemo(
-    () => {
-        const start = performance.now()
-        const result = Array.from(state.cells.entries()).map(([key, cell]) => ({ key, cell }))
-        const end = performance.now()
-        console.log(`[Performance] useMemo(cellsArray) took ${end - start}ms`)
-        return result
-    },
-    [state.cells],
-  )
-
   const renderedCells = useMemo(() => {
-    const start = performance.now()
-    const result = cellsArray.map(({ key, cell }) => {
-      const { x, y } = cell.coord
-      const left = x * CELL_SIZE
-      const top = y * CELL_SIZE
-      return (
-        <div key={key} style={{ position: 'absolute', left, top }}>
-          <Cell cell={cell} />
-        </div>
-      )
-    })
-    const end = performance.now()
-    console.log(`[Performance] useMemo(renderedCells) took ${end - start}ms`)
-    return result
-  }, [cellsArray])
+    if (!boardContainerRef.current) return []
+
+    const { clientWidth, clientHeight } = boardContainerRef.current
+    const scaledCellSize = CELL_SIZE * scale
+
+    // 描画範囲を少し広げて、スクロール時にセルが突然現れるのを防ぐ
+    const margin = 1
+
+    const minX = Math.floor(-offset.x / scaledCellSize) - margin
+    const maxX = Math.ceil((clientWidth - offset.x) / scaledCellSize) + margin
+    const minY = Math.floor(-offset.y / scaledCellSize) - margin
+    const maxY = Math.ceil((clientHeight - offset.y) / scaledCellSize) + margin
+
+    const visibleCells = []
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        const key = toCellKey({ x, y })
+        const cell = state.cells.get(key)
+        if (cell) {
+          const left = x * CELL_SIZE
+          const top = y * CELL_SIZE
+          visibleCells.push(
+            <div key={key} style={{ position: 'absolute', left, top }}>
+              <Cell cell={cell} />
+            </div>,
+          )
+        }
+      }
+    }
+    return visibleCells
+  }, [state.cells, offset, scale])
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-800">
@@ -150,5 +156,3 @@ export const BoardView: React.FC = () => {
     </div>
   )
 }
-
-

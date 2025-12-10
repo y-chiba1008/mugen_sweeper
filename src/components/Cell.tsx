@@ -1,6 +1,7 @@
 import type { CellState } from '../types/game'
 import { useGame } from '../context/GameContext'
 import { cn } from '../lib/utils'
+import { memo } from 'react'
 
 /**
  * 1 マス分のセル表示用コンポーネントの props
@@ -25,7 +26,7 @@ const mineCountColor: { [key: number]: string } = {
  * 1 マス分のセルを表示するコンポーネント
  * 左クリックで開示、右クリックでフラグをトグルする
  */
-export const Cell: React.FC<CellProps> = ({ cell }) => {
+export const Cell: React.FC<CellProps> = memo(({ cell }) => {
   const { revealCell, toggleFlag, state } = useGame()
 
   const handleClick = () => {
@@ -71,4 +72,4 @@ export const Cell: React.FC<CellProps> = ({ cell }) => {
       {content}
     </button>
   )
-}
+})
