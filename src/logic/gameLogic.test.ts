@@ -17,7 +17,9 @@ const createInitialState = (initial?: Partial<GameState>): GameState => ({
   ...initial,
 })
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const alwaysMine = (_coord: CellCoord) => true
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const neverMine = (_coord: CellCoord) => false
 
 // --- テストケース ---

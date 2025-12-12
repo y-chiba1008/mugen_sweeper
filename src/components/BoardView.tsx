@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
 import { toCellKey } from '../types/game'
@@ -19,17 +26,38 @@ export const BoardView: React.FC = () => {
   const [scale, setScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null)
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+
+  useLayoutEffect(() => {
+    if (boardContainerRef.current) {
+      const { clientWidth, clientHeight } = boardContainerRef.current
+      setContainerSize({ width: clientWidth, height: clientHeight })
+
+      // ResizeObserver を使ってコンテナのリサイズを監視
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          setContainerSize({
+            width: entry.contentRect.width,
+            height: entry.contentRect.height,
+          })
+        }
+      })
+      resizeObserver.observe(boardContainerRef.current)
+
+      return () => resizeObserver.disconnect()
+    }
+  }, [])
 
   // コンポーネントマウント時に中央に配置するためのオフセットを計算
   useEffect(() => {
-    if (boardContainerRef.current) {
-      const { clientWidth, clientHeight } = boardContainerRef.current
+    if (containerSize.width > 0 && containerSize.height > 0) {
       // (0,0) のセルが中央に来るようにオフセットを計算
-      const initialOffsetX = clientWidth / 2 - CELL_SIZE / 2
-      const initialOffsetY = clientHeight / 2 - CELL_SIZE / 2
+      const initialOffsetX = containerSize.width / 2 - CELL_SIZE / 2
+      const initialOffsetY = containerSize.height / 2 - CELL_SIZE / 2
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOffset({ x: initialOffsetX, y: initialOffsetY })
     }
-  }, []) // 依存配列を空にして、マウント時にのみ実行
+  }, [containerSize])
 
   /**
    * 盤面ドラッグ開始時のハンドラ
@@ -98,18 +126,19 @@ export const BoardView: React.FC = () => {
   }, [handleWheel])
 
   const renderedCells = useMemo(() => {
-    if (!boardContainerRef.current) return []
+    if (containerSize.width === 0 || containerSize.height === 0) return []
 
-    const { clientWidth, clientHeight } = boardContainerRef.current
     const scaledCellSize = CELL_SIZE * scale
 
     // 描画範囲を少し広げて、スクロール時にセルが突然現れるのを防ぐ
     const margin = 1
 
     const minX = Math.floor(-offset.x / scaledCellSize) - margin
-    const maxX = Math.ceil((clientWidth - offset.x) / scaledCellSize) + margin
+    const maxX =
+      Math.ceil((containerSize.width - offset.x) / scaledCellSize) + margin
     const minY = Math.floor(-offset.y / scaledCellSize) - margin
-    const maxY = Math.ceil((clientHeight - offset.y) / scaledCellSize) + margin
+    const maxY =
+      Math.ceil((containerSize.height - offset.y) / scaledCellSize) + margin
 
     const visibleCells = []
     for (let y = minY; y <= maxY; y++) {
@@ -128,7 +157,7 @@ export const BoardView: React.FC = () => {
       }
     }
     return visibleCells
-  }, [state.cells, offset, scale])
+  }, [state.cells, offset, scale, containerSize])
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-800">

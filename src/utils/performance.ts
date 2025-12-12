@@ -1,4 +1,4 @@
-export const measureTime = <T extends (...args: any[]) => any>(
+export const measureTime = <T extends (...args: unknown[]) => unknown>(
   fn: T,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   name: string = fn.name,
