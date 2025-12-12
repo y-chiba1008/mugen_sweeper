@@ -5,7 +5,8 @@
         "vscode": {
             "extensions": [
                 "dbaeumer.vscode-eslint", // ESLint
-                "esbenp.prettier-vscode" // Prettier
+                "esbenp.prettier-vscode", // Prettier
+                "adam-bender.commit-message-editor"
             ]
         }
     },
