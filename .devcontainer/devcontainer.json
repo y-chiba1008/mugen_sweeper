@@ -1,6 +1,6 @@
 {
     "name": "${localWorkspaceFolderBasename}",
-    "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+    "image": "naoyoshinori/gemini-cli:0-typescript-node-24-bookworm",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -16,12 +16,20 @@
             "source": "${localWorkspaceFolder}/.devcontainer/network",
             "target": "/usr/local/share/ca-certificates",
             "type": "bind"
-        }
+        },
+        // Mount host's ~/.gemini for persistent Gemini CLI user data (authentication, history, etc.)
+        "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gemini,target=/home/node/.gemini,type=bind,consistency=cached"
     ],
     // 証明書を認識
     "postCreateCommand": "sudo update-ca-certificates",
     "runArgs": [
         // コンテナ名を指定
-        "--name", "${localWorkspaceFolderBasename}"
-    ]
+        "--name",
+        "${localWorkspaceFolderBasename}",
+        // Load environment variables from .env.gemini in the home directory
+        "--env-file",
+        "${localEnv:HOME}${localEnv:USERPROFILE}/.env.gemini"
+    ],
+    // Specify the user to run operations inside the container
+    "remoteUser": "node"
 }
