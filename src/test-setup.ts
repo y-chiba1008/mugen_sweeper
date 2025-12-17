@@ -1,5 +1,3 @@
-import { vi } from 'vitest'
-
 // Define a dummy class for ResizeObserver
 class ResizeObserver {
   observe() {
@@ -14,4 +12,4 @@ class ResizeObserver {
 }
 
 // Assign the dummy class to the global scope
-global.ResizeObserver = ResizeObserver
+globalThis.ResizeObserver = ResizeObserver
