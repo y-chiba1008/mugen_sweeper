@@ -20,12 +20,14 @@ const CELL_SIZE = 32
  * - ホイールでズームイン/アウト
  */
 export const BoardView: React.FC = () => {
-  const { state } = useGame()
+  const { state, setIsDraggingBoard } = useGame()
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
+  const [isActuallyDragging, setIsActuallyDragging] = useState(false) // ドラッグ中かどうかを判定する新しいステート
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null)
+  const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null) // マウスダウン時の座標
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
 
   useLayoutEffect(() => {
@@ -64,7 +66,9 @@ export const BoardView: React.FC = () => {
    */
   const handleMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
     setIsPanning(true)
+    setIsActuallyDragging(false) // ドラッグ状態をリセット
     setLastPos({ x: e.clientX, y: e.clientY })
+    setStartPos({ x: e.clientX, y: e.clientY }) // クリック開始位置を記録
   }
 
   /**
@@ -72,8 +76,21 @@ export const BoardView: React.FC = () => {
    */
   const handleMouseMove: React.MouseEventHandler<HTMLDivElement> = (e) => {
     if (!isPanning || !lastPos) return
+
     const dx = e.clientX - lastPos.x
     const dy = e.clientY - lastPos.y
+
+    // 新しく追加: ドラッグとして認識する閾値 (例: 5px)
+    const DRAG_THRESHOLD = 5
+    if (startPos && !isActuallyDragging) {
+      const distance = Math.sqrt(
+        Math.pow(e.clientX - startPos.x, 2) + Math.pow(e.clientY - startPos.y, 2),
+      )
+      if (distance > DRAG_THRESHOLD) {
+        setIsActuallyDragging(true)
+      }
+    }
+
     setOffset((prev) => ({ x: prev.x + dx, y: prev.y + dy }))
     setLastPos({ x: e.clientX, y: e.clientY })
   }
@@ -81,9 +98,22 @@ export const BoardView: React.FC = () => {
   /**
    * ドラッグ終了（マウスアップ or 領域外に離脱）時のハンドラ
    */
-  const handleMouseUpOrLeave: React.MouseEventHandler<HTMLDivElement> = () => {
+  const handleMouseUpOrLeave: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    if (isActuallyDragging) {
+      // ドラッグ操作だった場合、クリックイベントの伝播を阻止
+      e.preventDefault()
+      e.stopPropagation()
+
+      // GameContextにドラッグがあったことを通知し、短時間クリックを無効化する
+      setIsDraggingBoard(true)
+      setTimeout(() => {
+        setIsDraggingBoard(false)
+      }, 100) // 100ms後にリセット
+    }
     setIsPanning(false)
+    setIsActuallyDragging(false) // ドラッグ状態をリセット
     setLastPos(null)
+    setStartPos(null) // クリック開始位置をリセット
   }
 
   /**
@@ -168,6 +198,7 @@ export const BoardView: React.FC = () => {
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
         id="board-view-container"
+        data-testid="board-view-container"
         ref={boardContainerRef}
       >
         <div

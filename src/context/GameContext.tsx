@@ -3,7 +3,14 @@ import type { CellCoord, CellKey, CellState, GameState } from '../types/game'
 import { toCellKey } from '../types/game'
 import type { SerializedGameState } from '../utils/storage'
 import { loadGameState, saveGameState } from '../utils/storage'
-import { createContext, useContext, useEffect, useMemo, useReducer } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState, // ここを追加
+} from 'react'
 import {
   defaultIsMineGenerator,
   revealCell as revealCellLogic,
@@ -28,6 +35,8 @@ type GameContextValue = {
   revealCell: (coord: CellCoord) => void
   toggleFlag: (coord: CellCoord) => void
   resetGame: () => void
+  isDraggingBoard: boolean // 新しく追加
+  setIsDraggingBoard: (isDragging: boolean) => void // 新しく追加
 }
 
 /**
@@ -104,6 +113,8 @@ const GameContext = createContext<GameContextValue | undefined>(undefined)
  */
 const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState)
+  const [isDraggingBoard, setIsDraggingBoard] = useState(false) // 新しく追加
+
 
   useEffect(() => {
     const saved = loadGameState()
@@ -145,8 +156,10 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       revealCell: (coord) => dispatch({ type: 'REVEAL_CELL', coord }),
       toggleFlag: (coord) => dispatch({ type: 'TOGGLE_FLAG', coord }),
       resetGame: () => dispatch({ type: 'RESET' }),
+      isDraggingBoard, // 新しく追加
+      setIsDraggingBoard, // 新しく追加
     }),
-    [state],
+    [state, isDraggingBoard],
   )
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>

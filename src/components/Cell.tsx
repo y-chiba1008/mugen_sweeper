@@ -27,10 +27,10 @@ const mineCountColor: { [key: number]: string } = {
  * 左クリックで開示、右クリックでフラグをトグルする
  */
 export const Cell: React.FC<CellProps> = memo(({ cell }) => {
-  const { revealCell, toggleFlag, state } = useGame()
+  const { revealCell, toggleFlag, state, isDraggingBoard } = useGame()
 
   const handleClick = () => {
-    if (state.gameOver) return
+    if (state.gameOver || isDraggingBoard) return // isDraggingBoard が true の場合は処理を中断
     revealCell(cell.coord)
   }
 
@@ -61,6 +61,7 @@ export const Cell: React.FC<CellProps> = memo(({ cell }) => {
       type="button"
       onClick={handleClick}
       onContextMenu={handleRightClick}
+      data-testid={`cell-${cell.coord.x}-${cell.coord.y}`}
       className={cn(
         'flex h-[30px] w-[30px] items-center justify-center border-t border-l border-slate-400 text-xs font-bold',
         'select-none',

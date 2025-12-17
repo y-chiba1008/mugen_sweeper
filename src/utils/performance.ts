@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const measureTime = <T extends (...args: any[]) => any>(
   fn: T,
   name: string = fn.name || 'anonymous func',
