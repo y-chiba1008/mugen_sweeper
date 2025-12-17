@@ -117,6 +117,13 @@ export const BoardView: React.FC = () => {
   }
 
   /**
+   * 右クリックメニューを無効化
+   */
+  const handleContextMenu: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    e.preventDefault()
+  }
+
+  /**
    * ホイール操作によるズームイン/アウトのハンドラ
    */
   const handleWheel = useCallback(
@@ -197,6 +204,7 @@ export const BoardView: React.FC = () => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}
         onMouseLeave={handleMouseUpOrLeave}
+        onContextMenu={handleContextMenu}
         id="board-view-container"
         data-testid="board-view-container"
         ref={boardContainerRef}
