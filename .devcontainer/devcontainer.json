@@ -4,9 +4,10 @@
     "customizations": {
         "vscode": {
             "extensions": [
-                "dbaeumer.vscode-eslint", // ESLint
-                "esbenp.prettier-vscode", // Prettier
-                "adam-bender.commit-message-editor"
+                "dbaeumer.vscode-eslint",
+                "esbenp.prettier-vscode",
+                "adam-bender.commit-message-editor",
+                "ritwickdey.LiveServer"
             ]
         }
     },
