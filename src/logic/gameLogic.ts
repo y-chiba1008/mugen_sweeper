@@ -122,6 +122,7 @@ const _revealCell = (
   state: GameState,
   coord: CellCoord,
   isMineGenerator: IsMineGenerator,
+  isUserInitiated: boolean = false,
 ): GameState => {
   if (state.gameOver) return state
 
@@ -129,8 +130,15 @@ const _revealCell = (
   
   let cell = getOrCreateCell(cells, coord, isMineGenerator)
 
-  if (cell.revealed || cell.flagged) {
+  // 旗が立っているセルは開けない
+  if (cell.flagged) {
     return { ...state, cells }
+  }
+
+  // 開封済みのセルをクリックした場合はコード操作を実行
+  // ただし、ユーザーが直接クリックした場合のみ
+  if (cell.revealed && isUserInitiated) {
+    return chordCell(state, coord, isMineGenerator)
   }
   
   // 隣接セルを生成し、隣接地雷数を計算する
@@ -184,6 +192,55 @@ const _revealCell = (
   }
 }
 export const revealCell = measureTime(_revealCell, 'revealCell')
+
+const _chordCell = (
+  state: GameState,
+  coord: CellCoord,
+  isMineGenerator: IsMineGenerator,
+): GameState => {
+  const cell = state.cells.get(toCellKey(coord))
+
+  // 開かれていない、または数字のないセルでは実行しない
+  if (!cell || !cell.revealed || cell.adjacentMines === 0) {
+    return state
+  }
+
+  const neighbors = NEIGHBORS.map((n) => {
+    const neighborCoord = { x: coord.x + n.x, y: coord.y + n.y }
+    return state.cells.get(toCellKey(neighborCoord))
+  }).filter((c): c is CellState => c !== undefined)
+
+  const flaggedCount = neighbors.filter((n) => n.flagged).length
+  const revealedMineCount = neighbors.filter((n) => n.revealed && n.isMine).length
+
+  let newState = { ...state }
+
+  // 自動開封ロジック
+  if (cell.adjacentMines === flaggedCount + revealedMineCount) {
+    for (const neighbor of neighbors) {
+      if (!neighbor.revealed && !neighbor.flagged) {
+        // revealCell は新しい GameState を返すので、それを次の revealCell に渡す
+        newState = revealCell(newState, neighbor.coord, isMineGenerator, false) // isUserInitiated を false に
+        // ゲームオーバーになったら即座にループを抜ける
+        if (newState.gameOver) break
+      }
+    }
+  }
+  // 自動旗設置ロジック
+  else {
+    const unflaggedUnrevealedCount = neighbors.filter(n => !n.revealed && !n.flagged).length;
+    if (unflaggedUnrevealedCount > 0 && cell.adjacentMines - (flaggedCount + revealedMineCount) === unflaggedUnrevealedCount) {
+      for (const neighbor of neighbors) {
+        if (!neighbor.revealed && !neighbor.flagged) {
+          newState = toggleFlag(newState, neighbor.coord, isMineGenerator);
+        }
+      }
+    }
+  }
+
+  return newState
+}
+export const chordCell = measureTime(_chordCell, 'chordCell')
 
 const _toggleFlag = (
   state: GameState,

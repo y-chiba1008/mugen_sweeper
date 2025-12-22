@@ -141,6 +141,88 @@ describe('gameLogic', () => {
     })
   })
 
+  describe('chordCell (開封済みセルクリック)', () => {
+    it('自動開封: 数字が (旗の数 + 開封済み地雷) と一致する場合、セルが開かれる', () => {
+      const cells = new Map<CellKey, CellState>();
+      const centerCoord = { x: 0, y: 0 };
+      const mineCoord1 = { x: 1, y: 1 }; // 旗が立っている地雷
+      const mineCoord2 = { x: 1, y: 0 }; // 開封済みの地雷
+      const safeCoord = { x: -1, y: -1 }; // 開かれるべき安全なセル
+
+      // (0,0) は開封済み、隣接地雷は2
+      cells.set(toCellKey(centerCoord), { coord: centerCoord, isMine: false, adjacentMines: 2, revealed: true, flagged: false });
+      cells.set(toCellKey(mineCoord1), { coord: mineCoord1, isMine: true, adjacentMines: 0, revealed: false, flagged: true });
+      cells.set(toCellKey(mineCoord2), { coord: mineCoord2, isMine: true, adjacentMines: 0, revealed: true, flagged: false });
+      cells.set(toCellKey(safeCoord), { coord: safeCoord, isMine: false, adjacentMines: 0, revealed: false, flagged: false });
+
+      const initialState = createInitialState({ cells });
+      const isMineGenerator = (c: CellCoord) => [toCellKey(mineCoord1), toCellKey(mineCoord2)].includes(toCellKey(c));
+      const newState = revealCell(initialState, centerCoord, isMineGenerator, true);
+
+      // safeCoord が開かれていることを確認
+      expect(newState.cells.get(toCellKey(safeCoord))?.revealed).toBe(true);
+      expect(newState.gameOver).toBe(false);
+    });
+
+    it('自動開封(失敗): 誤った旗でコード操作を行い、地雷を踏んでゲームオーバーになる', () => {
+      const cells = new Map<CellKey, CellState>()
+      const centerCoord = { x: 0, y: 0 }
+      const wrongFlagCoord = { x: 1, y: 1 } // ここは地雷ではない
+      const mineCoord = { x: -1, y: -1 }    // ここが地雷
+
+      cells.set(toCellKey(centerCoord), { coord: centerCoord, isMine: false, adjacentMines: 1, revealed: true, flagged: false })
+      cells.set(toCellKey(wrongFlagCoord), { coord: wrongFlagCoord, isMine: false, adjacentMines: 0, revealed: false, flagged: true })
+      cells.set(toCellKey(mineCoord), { coord: mineCoord, isMine: true, adjacentMines: 0, revealed: false, flagged: false })
+
+      const initialState = createInitialState({ cells, lives: 1 })
+      const newState = revealCell(initialState, centerCoord, (c) => toCellKey(c) === toCellKey(mineCoord), true)
+
+      // (-1,-1) のセルが開かれ、ゲームオーバーになることを確認
+      expect(newState.cells.get(toCellKey(mineCoord))?.revealed).toBe(true)
+      expect(newState.gameOver).toBe(true)
+    })
+
+    it('自動旗設置: 残りの地雷数と未開封セル数が一致する場合、旗が立つ', () => {
+      const cells = new Map<CellKey, CellState>();
+      const centerCoord = { x: 0, y: 0 }; // 数字 '3'
+      const flaggedCoord = { x: -1, y: 0 }; // 旗
+      const revealedMineCoord = { x: 1, y: 0 }; // 開封済み地雷
+      const targetCoord = { x: 0, y: 1 }; // 旗が立つべきセル
+  
+      // (0,0) は開封済み、隣接地雷は3
+      cells.set(toCellKey(centerCoord), { coord: centerCoord, isMine: false, adjacentMines: 3, revealed: true, flagged: false });
+      cells.set(toCellKey(flaggedCoord), { coord: flaggedCoord, isMine: true, adjacentMines: 0, revealed: false, flagged: true });
+      cells.set(toCellKey(revealedMineCoord), { coord: revealedMineCoord, isMine: true, adjacentMines: 0, revealed: true, flagged: false });
+      cells.set(toCellKey(targetCoord), { coord: targetCoord, isMine: true, adjacentMines: 0, revealed: false, flagged: false });
+  
+      const initialState = createInitialState({ cells });
+      const isMineGenerator = (c: CellCoord) => [toCellKey(flaggedCoord), toCellKey(revealedMineCoord), toCellKey(targetCoord)].includes(toCellKey(c));
+      const newState = revealCell(initialState, centerCoord, isMineGenerator, true);
+  
+      // targetCoord に旗が立っていることを確認
+      expect(newState.cells.get(toCellKey(targetCoord))?.flagged).toBe(true);
+    });
+
+    it('不発: 条件が一致しない場合は何も起こらない', () => {
+      const cells = new Map<CellKey, CellState>()
+      const centerCoord = { x: 0, y: 0 }
+      const mineCoord = { x: 1, y: 1 }
+
+      // (0,0) は開封済み、隣接地雷は2だが、どの条件にも合致しない
+      cells.set(toCellKey(centerCoord), { coord: centerCoord, isMine: false, adjacentMines: 2, revealed: true, flagged: false })
+      cells.set(toCellKey(mineCoord), { coord: mineCoord, isMine: true, adjacentMines: 0, revealed: false, flagged: false })
+
+      const initialState = createInitialState({ cells })
+      const newState = revealCell(initialState, centerCoord, (c) => toCellKey(c) === toCellKey(mineCoord), true)
+
+      const mineCellAfter = newState.cells.get(toCellKey(mineCoord))
+      expect(mineCellAfter?.flagged).toBe(false)
+      expect(mineCellAfter?.revealed).toBe(false)
+      expect(newState.score).toBe(initialState.score)
+      expect(newState.lives).toBe(initialState.lives)
+    })
+  })
+
   describe('defaultIsMineGenerator', () => {
     it('中心 (0,0) 周辺の9マスには地雷を生成しない', () => {
       for (let y = -1; y <= 1; y++) {

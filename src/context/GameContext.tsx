@@ -101,7 +101,8 @@ const reducer = (
       }
     }
     case 'REVEAL_CELL': {
-      const newState = revealCellLogic(state, action.coord, defaultIsMineGenerator)
+      // ユーザーが直接クリックしたことを示すため、isUserInitiated を true に設定
+      const newState = revealCellLogic(state, action.coord, defaultIsMineGenerator, true)
       return { ...newState, gameVersion: state.gameVersion }
     }
     case 'TOGGLE_FLAG': {
