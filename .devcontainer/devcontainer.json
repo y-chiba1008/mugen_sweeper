@@ -31,5 +31,16 @@
         "${localEnv:HOME}${localEnv:USERPROFILE}/.env.gemini"
     ],
     // Specify the user to run operations inside the container
-    "remoteUser": "node"
+    "remoteUser": "node",
+
+    // port 5173 -> 5174
+    "forwardPorts": [5173],
+    "portsAttributes": {
+        "5173": {
+        "label": "Vite App",
+        "onAutoForward": "notify",
+        "elevated": false
+        }
+    },
+    "appPort": ["5174:5173"]
 }
