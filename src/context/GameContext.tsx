@@ -31,18 +31,18 @@ type GameAction =
  * コンテキスト経由で公開するゲーム状態と操作関数のインターフェース
  */
 type GameContextValue = {
-  state: GameState
+  state: GameState & { gameVersion: number }
   revealCell: (coord: CellCoord) => void
   toggleFlag: (coord: CellCoord) => void
   resetGame: () => void
-  isDraggingBoard: boolean // 新しく追加
-  setIsDraggingBoard: (isDragging: boolean) => void // 新しく追加
+  isDraggingBoard: boolean
+  setIsDraggingBoard: (isDragging: boolean) => void
 }
 
 /**
  * 新規ゲーム開始時の初期状態
  */
-const initialState: GameState = {
+const initialState: GameState & { gameVersion: number } = {
   cells: new Map<CellKey, CellState>(),
   score: 0,
   lives: INITIAL_LIVES,
@@ -50,17 +50,22 @@ const initialState: GameState = {
   nextLifeScoreThreshold: LIFE_BONUS_THRESHOLD,
   gameOver: false,
   isLoaded: false,
+  gameVersion: 1, // 初期バージョンを1とする
 }
 
 /**
  * ゲーム状態を操作するための reducer
  * スコア、ライフ、盤面状態、ハイスコアなどを一元管理する
  */
-const reducer = (state: GameState, action: GameAction): GameState => {
+const reducer = (
+  state: GameState & { gameVersion: number },
+  action: GameAction
+): GameState & { gameVersion: number } => {
   switch (action.type) {
     case 'LOAD_FROM_STORAGE': {
       const saved = action.payload
       if (!saved) {
+        // 初回ロード時は initialState をそのまま返し、gameVersion は 1 のまま
         return { ...initialState, isLoaded: true }
       }
       const cells = new Map<CellKey, CellState>()
@@ -74,6 +79,7 @@ const reducer = (state: GameState, action: GameAction): GameState => {
           flagged: c.flagged,
         })
       }
+
       return {
         cells,
         score: saved.score,
@@ -82,16 +88,25 @@ const reducer = (state: GameState, action: GameAction): GameState => {
         nextLifeScoreThreshold: saved.nextLifeScoreThreshold,
         gameOver: saved.gameOver,
         isLoaded: true,
+        gameVersion: 1, // ストレージからのロード時もバージョン1から開始
       }
     }
     case 'RESET': {
-      return { ...initialState, highScore: state.highScore, isLoaded: true }
+      // ゲームリセット時にバージョンをインクリメント
+      return {
+        ...initialState,
+        highScore: state.highScore,
+        isLoaded: true,
+        gameVersion: state.gameVersion + 1,
+      }
     }
     case 'REVEAL_CELL': {
-      return revealCellLogic(state, action.coord, defaultIsMineGenerator)
+      const newState = revealCellLogic(state, action.coord, defaultIsMineGenerator)
+      return { ...newState, gameVersion: state.gameVersion }
     }
     case 'TOGGLE_FLAG': {
-      return toggleFlagLogic(state, action.coord, defaultIsMineGenerator)
+      const newState = toggleFlagLogic(state, action.coord, defaultIsMineGenerator)
+      return { ...newState, gameVersion: state.gameVersion }
     }
     case 'SET_HIGH_SCORE': {
       if (action.highScore <= state.highScore) return state

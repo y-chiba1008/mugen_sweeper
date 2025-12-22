@@ -50,7 +50,7 @@ export const BoardView: React.FC = () => {
     }
   }, [])
 
-  // コンポーネントマウント時に中央に配置するためのオフセットを計算
+  // コンポーネントマウント時、またはゲームのリセット時に中央に配置
   useEffect(() => {
     if (containerSize.width > 0 && containerSize.height > 0) {
       // (0,0) のセルが中央に来るようにオフセットを計算
@@ -58,8 +58,9 @@ export const BoardView: React.FC = () => {
       const initialOffsetY = containerSize.height / 2 - CELL_SIZE / 2
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setOffset({ x: initialOffsetX, y: initialOffsetY })
+      setScale(1) // スケールもリセット
     }
-  }, [containerSize])
+  }, [state.gameVersion, containerSize])
 
   /**
    * 盤面ドラッグ開始時のハンドラ
@@ -210,6 +211,7 @@ export const BoardView: React.FC = () => {
         ref={boardContainerRef}
       >
         <div
+          data-testid="game-board"
           style={{
             position: 'absolute',
             left: offset.x,
