@@ -20,9 +20,13 @@ export const NEIGHBORS: CellCoord[] = [
 
 export type IsMineGenerator = (coord: CellCoord) => boolean
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export const defaultIsMineGenerator: IsMineGenerator = (_coord: CellCoord) =>
-  Math.random() < MINE_PROBABILITY
+export const defaultIsMineGenerator: IsMineGenerator = (coord: CellCoord) => {
+  // 中心 (0,0) 周辺の9マスには地雷を置かない
+  if (Math.abs(coord.x) <= 1 && Math.abs(coord.y) <= 1) {
+    return false
+  }
+  return Math.random() < MINE_PROBABILITY
+}
 
 // --- 純粋なゲームロジック関数 ---
 

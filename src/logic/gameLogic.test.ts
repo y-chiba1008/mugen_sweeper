@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { GameState, CellState, CellKey, CellCoord } from '../types/game'
 import { toCellKey } from '../types/game'
-import { revealCell, toggleFlag } from './gameLogic'
+import { revealCell, toggleFlag, defaultIsMineGenerator } from './gameLogic'
 import { INITIAL_LIVES, LIFE_BONUS_THRESHOLD } from '../config/gameConfig'
 
 // --- テスト用のヘルパーとモック ---
@@ -45,7 +45,7 @@ describe('gameLogic', () => {
 
     it('地雷セルを開くと、ライフが1減り、ゲームオーバーにはならない（まだライフがある場合）', () => {
       const initialState = createInitialState({ lives: 3 })
-      const coord = { x: 0, y: 0 }
+      const coord = { x: 2, y: 2 } // 安全地帯外の座標
 
       const newState = revealCell(initialState, coord, alwaysMine)
 
@@ -56,7 +56,7 @@ describe('gameLogic', () => {
 
     it('最後のライフで地雷セルを開くと、ゲームオーバーになる', () => {
       const initialState = createInitialState({ lives: 1 })
-      const coord = { x: 0, y: 0 }
+      const coord = { x: 2, y: 2 } // 安全地帯外の座標
 
       const newState = revealCell(initialState, coord, alwaysMine)
 
@@ -138,6 +138,32 @@ describe('gameLogic', () => {
       const newState = toggleFlag(initialState, coord, neverMine)
 
       expect(newState.cells.get(toCellKey(coord))?.flagged).toBe(false)
+    })
+  })
+
+  describe('defaultIsMineGenerator', () => {
+    it('中心 (0,0) 周辺の9マスには地雷を生成しない', () => {
+      for (let y = -1; y <= 1; y++) {
+        for (let x = -1; x <= 1; x++) {
+          const coord = { x, y }
+          // 確率に依存せず、常に false であることを確認
+          expect(defaultIsMineGenerator(coord)).toBe(false)
+        }
+      }
+    })
+
+    it('中心周辺以外の座標では、確率で地雷を生成することがある', () => {
+      const coord1 = { x: 2, y: 2 }
+      const coord2 = { x: -2, y: -2 }
+      const results1 = Array.from({ length: 1000 }, () => defaultIsMineGenerator(coord1))
+      const results2 = Array.from({ length: 1000 }, () => defaultIsMineGenerator(coord2))
+
+      // 1000回中、少なくとも1回は true (地雷あり) と false (地雷なし) が含まれることを期待する
+      // これにより、単に true/false を返すだけでないことを確認する
+      expect(results1).toContain(true)
+      expect(results1).toContain(false)
+      expect(results2).toContain(true)
+      expect(results2).toContain(false)
     })
   })
 })
