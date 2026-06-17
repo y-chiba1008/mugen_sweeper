@@ -29,6 +29,8 @@ export const BoardView: React.FC = () => {
   const [lastPos, setLastPos] = useState<{ x: number; y: number } | null>(null)
   const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null) // マウスダウン時の座標
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
+  const isViewInitializedRef = useRef(false)
+  const prevGameVersionRef = useRef(state.gameVersion)
 
   useLayoutEffect(() => {
     if (boardContainerRef.current) {
@@ -50,16 +52,22 @@ export const BoardView: React.FC = () => {
     }
   }, [])
 
-  // コンポーネントマウント時、またはゲームのリセット時に中央に配置
+  // 初回マウント時、またはゲームリセット時のみ中央に配置（リサイズ時は位置を維持）
   useEffect(() => {
-    if (containerSize.width > 0 && containerSize.height > 0) {
-      // (0,0) のセルが中央に来るようにオフセットを計算
-      const initialOffsetX = containerSize.width / 2 - CELL_SIZE / 2
-      const initialOffsetY = containerSize.height / 2 - CELL_SIZE / 2
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setOffset({ x: initialOffsetX, y: initialOffsetY })
-      setScale(1) // スケールもリセット
-    }
+    if (containerSize.width <= 0 || containerSize.height <= 0) return
+
+    const isGameReset = prevGameVersionRef.current !== state.gameVersion
+    const shouldInitialize = !isViewInitializedRef.current || isGameReset
+
+    if (!shouldInitialize) return
+
+    const initialOffsetX = containerSize.width / 2 - CELL_SIZE / 2
+    const initialOffsetY = containerSize.height / 2 - CELL_SIZE / 2
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOffset({ x: initialOffsetX, y: initialOffsetY })
+    setScale(1)
+    isViewInitializedRef.current = true
+    prevGameVersionRef.current = state.gameVersion
   }, [state.gameVersion, containerSize])
 
   /**
