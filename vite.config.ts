@@ -18,7 +18,7 @@ const viteConfig = defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  base: '/mugen_sweeper/',
+  base: '/',
 })
 
 const vitestConfig = defineVitestConfig({
