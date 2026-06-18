@@ -1,0 +1,40 @@
+# === Dependencies ===
+node_modules/
+.pnpm-store/
+.pnpm/
+
+# === Build Outputs ===
+dist/
+build/
+out/
+.vite/
+
+# === mise ===
+.mise/
+.tool-versions
+
+# === Cache ===
+.cache/
+.turbo/
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# === Environment & Secrets ===
+.env
+.env.*
+!.env.example
+
+# === Logs ===
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Editor ===
+.vscode/
+*.swp
+*.swo
