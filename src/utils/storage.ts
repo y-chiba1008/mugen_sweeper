@@ -1,131 +1,112 @@
 import { SAVE_DATA_VERSION } from '../config/gameConfig'
+import { db } from '../db/database'
+import type { MetaInput, MetaRecord, SerializedCell } from '../db/types'
+import { groupCellsByChunk, toChunkCoord } from './chunkUtils'
+
+export type { SerializedCell } from '../db/types'
 
 /**
- * ローカルストレージに保存する 1 マス分の情報
- * 座標・地雷フラグ・隣接地雷数・開示状態・フラグ状態を含む
+ * meta テーブルからセーブデータを読み込む
  */
-export type SerializedCell = {
-  /** x 座標（盤面上の列インデックス。0 を原点とする整数） */
-  x: number
-  /** y 座標（盤面上の行インデックス。0 を原点とする整数） */
-  y: number
-  /** このセルが地雷であるかどうか */
-  isMine: boolean
-  /** 隣接 8 マスに存在する地雷の数 */
-  adjacentMines: number
-  /** プレイヤーによって開かれたセルかどうか */
-  revealed: boolean
-  /** プレイヤーによってフラグが立てられているかどうか */
-  flagged: boolean
-}
-
-/**
- * ローカルストレージに保存するゲーム全体の状態
- * セーブデータのバージョンや簡易ハッシュも含む
- */
-export type SerializedGameState = {
-  /** セーブデータのバージョン文字列 */
-  version: string
-  /** 現在のスコア（開いたセル数に相当） */
-  score: number
-  /** 現在の残りライフ数 */
-  lives: number
-  /** これまでのハイスコア */
-  highScore: number
-  /** 次にライフが 1 つ追加されるスコア閾値 */
-  nextLifeScoreThreshold: number
-  /** 現在ゲームオーバー状態かどうか */
-  gameOver: boolean
-  /** 開示済み・フラグ済みセルなどの盤面情報 */
-  cells: SerializedCell[]
-  /**
-   * セーブデータ本体から計算した簡易チェックサム
-   * データ破損や手動改変の検出に利用する
-   */
-  checksum?: number
-}
-
-/** ローカルストレージに保存する際のキー */
-const STORAGE_KEY = 'mugen_sweeper_save_v1'
-
-/**
- * セーブデータ本体から簡易チェックサムを計算する
- * 暗号学的な強度はないが、破損検知の目安として利用する
- */
-const computeChecksum = (data: Omit<SerializedGameState, 'checksum'>): number => {
-  const json = JSON.stringify(data)
-  let hash = 0
-  for (let i = 0; i < json.length; i += 1) {
-    // シンプルなハッシュ関数（データ破損検知用の簡易チェック）
-    hash = (hash * 31 + json.charCodeAt(i)) >>> 0
-  }
-  return hash
-}
-
-/**
- * ゲーム状態をローカルストレージに保存する
- * バージョンとチェックサムを付与してから保存する
- */
-export const saveGameState = (state: SerializedGameState): void => {
-  if (typeof window === 'undefined') return
-
-  const dataWithVersion: Omit<SerializedGameState, 'checksum'> = {
-    ...state,
-    version: SAVE_DATA_VERSION,
-  }
-
-  const checksum = computeChecksum(dataWithVersion)
-
-  const payload: SerializedGameState = {
-    ...dataWithVersion,
-    checksum,
-  }
-
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload))
-  } catch {
-    // localStorage が利用できない場合は黙って失敗する
-  }
-}
-
-/**
- * ローカルストレージからゲーム状態を読み込む
- * - データが存在しない
- * - バージョン不一致
- * - チェックサム不一致
- * などの場合は null を返す
- */
-export const loadGameState = (): SerializedGameState | null => {
+export const loadMeta = async (): Promise<MetaRecord | null> => {
   if (typeof window === 'undefined') return null
 
-  const raw = window.localStorage.getItem(STORAGE_KEY)
-  if (!raw) return null
-
   try {
-    const parsed = JSON.parse(raw) as SerializedGameState
-    if (parsed.version !== SAVE_DATA_VERSION) return null
-
-    const { checksum, ...rest } = parsed
-    const expected = computeChecksum(rest)
-    if (checksum !== expected) return null
-
-    return parsed
+    const meta = await db.meta.get('save')
+    if (!meta) return null
+    if (meta.version !== SAVE_DATA_VERSION) return null
+    return meta
   } catch {
     return null
   }
 }
 
 /**
- * ローカルストレージに保存されたゲーム状態を削除する
- * 主にデバッグ用途や明示的なリセット処理向け
+ * meta テーブルにゲーム状態を保存する
  */
-export const clearGameState = (): void => {
+export const saveMeta = async (meta: MetaInput): Promise<void> => {
   if (typeof window === 'undefined') return
+
   try {
-    window.localStorage.removeItem(STORAGE_KEY)
+    await db.meta.put({
+      id: 'save',
+      savedAt: new Date(),
+      version: SAVE_DATA_VERSION,
+      ...meta,
+    })
+  } catch {
+    // IndexedDB が利用できない場合は黙って失敗する
+  }
+}
+
+/**
+ * 変化したセルをチャンク単位で差分マージして保存する
+ */
+export const saveChunks = async (changedCells: SerializedCell[]): Promise<void> => {
+  if (typeof window === 'undefined' || changedCells.length === 0) return
+
+  try {
+    const chunkMap = groupCellsByChunk(changedCells)
+    const records = []
+
+    for (const { cx, cy, cells } of chunkMap.values()) {
+      const existing = await db.chunks.get([cx, cy])
+      const cellMap = new Map(
+        (existing?.cells ?? []).map((c) => [`${c.x},${c.y}`, c]),
+      )
+      for (const cell of cells) {
+        cellMap.set(`${cell.x},${cell.y}`, cell)
+      }
+      records.push({ cx, cy, cells: [...cellMap.values()] })
+    }
+
+    await db.chunks.bulkPut(records)
   } catch {
     // ignore
   }
 }
 
+/**
+ * セル座標範囲に含まれるチャンクのセルを読み込む
+ */
+export const loadChunksInRange = async (
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+): Promise<SerializedCell[]> => {
+  if (typeof window === 'undefined') return []
 
+  try {
+    const cx1 = toChunkCoord(x1)
+    const cx2 = toChunkCoord(x2)
+    const cy1 = toChunkCoord(y1)
+    const cy2 = toChunkCoord(y2)
+
+    const keys: [number, number][] = []
+    for (let cx = cx1; cx <= cx2; cx++) {
+      for (let cy = cy1; cy <= cy2; cy++) {
+        keys.push([cx, cy])
+      }
+    }
+
+    const chunks = await db.chunks.bulkGet(keys)
+    return chunks.filter((c): c is NonNullable<typeof c> => c !== undefined).flatMap((c) => c.cells)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * IndexedDB の全データを削除する
+ */
+export const clearAllData = async (): Promise<void> => {
+  if (typeof window === 'undefined') return
+
+  try {
+    await db.meta.clear()
+    await db.chunks.clear()
+  } catch {
+    // ignore
+  }
+}

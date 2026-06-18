@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto'
+
 // Define a dummy class for ResizeObserver
 class ResizeObserver {
   observe() {

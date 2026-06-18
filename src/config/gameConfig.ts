@@ -8,6 +8,6 @@ export const LIFE_BONUS_THRESHOLD = 1000
 export const GLOBAL_SEED = 123456789
 
 // セーブデータのバージョン
-export const SAVE_DATA_VERSION = '1.0.0'
+export const SAVE_DATA_VERSION = '2.0.0'
 
 

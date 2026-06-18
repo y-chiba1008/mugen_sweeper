@@ -10,7 +10,7 @@ const TestComponent = () => {
   return (
     <>
       <BoardView />
-      <button onClick={resetGame}>Reset</button>
+      <button onClick={() => void resetGame()}>Reset</button>
     </>
   )
 }

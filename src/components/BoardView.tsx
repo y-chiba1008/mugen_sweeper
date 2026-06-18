@@ -20,7 +20,7 @@ const CELL_SIZE = 32
  * - ホイールでズームイン/アウト
  */
 export const BoardView: React.FC = () => {
-  const { state, setIsDraggingBoard } = useGame()
+  const { state, setIsDraggingBoard, loadChunksForViewport } = useGame()
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
@@ -171,20 +171,36 @@ export const BoardView: React.FC = () => {
     }
   }, [handleWheel])
 
-  const renderedCells = useMemo(() => {
-    if (containerSize.width === 0 || containerSize.height === 0) return []
+  const viewportBounds = useMemo(() => {
+    if (containerSize.width === 0 || containerSize.height === 0) {
+      return null
+    }
 
     const scaledCellSize = CELL_SIZE * scale
-
-    // 描画範囲を少し広げて、スクロール時にセルが突然現れるのを防ぐ
     const margin = 1
 
-    const minX = Math.floor(-offset.x / scaledCellSize) - margin
-    const maxX =
-      Math.ceil((containerSize.width - offset.x) / scaledCellSize) + margin
-    const minY = Math.floor(-offset.y / scaledCellSize) - margin
-    const maxY =
-      Math.ceil((containerSize.height - offset.y) / scaledCellSize) + margin
+    return {
+      minX: Math.floor(-offset.x / scaledCellSize) - margin,
+      maxX: Math.ceil((containerSize.width - offset.x) / scaledCellSize) + margin,
+      minY: Math.floor(-offset.y / scaledCellSize) - margin,
+      maxY: Math.ceil((containerSize.height - offset.y) / scaledCellSize) + margin,
+    }
+  }, [offset, scale, containerSize])
+
+  useEffect(() => {
+    if (!state.isLoaded || !viewportBounds) return
+    loadChunksForViewport(
+      viewportBounds.minX,
+      viewportBounds.minY,
+      viewportBounds.maxX,
+      viewportBounds.maxY,
+    )
+  }, [state.isLoaded, viewportBounds, loadChunksForViewport])
+
+  const renderedCells = useMemo(() => {
+    if (!viewportBounds) return []
+
+    const { minX, maxX, minY, maxY } = viewportBounds
 
     const visibleCells = []
     for (let y = minY; y <= maxY; y++) {
@@ -203,7 +219,7 @@ export const BoardView: React.FC = () => {
       }
     }
     return visibleCells
-  }, [state.cells, offset, scale, containerSize])
+  }, [state.cells, viewportBounds])
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-800">
