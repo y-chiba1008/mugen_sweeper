@@ -37,6 +37,7 @@ import {
 type ExtendedState = GameState & {
   gameVersion: number
   changedCells: SerializedCell[]
+  currentLocation: CellCoord
 }
 
 /**
@@ -60,6 +61,8 @@ type GameContextValue = {
   toggleFlag: (coord: CellCoord) => Promise<void>
   resetGame: () => Promise<void>
   loadChunksForViewport: (x1: number, y1: number, x2: number, y2: number) => Promise<void>
+  scrollToCurrentLocation: () => void
+  scrollToCurrentLocationToken: number
   isDraggingBoard: boolean
   setIsDraggingBoard: (isDragging: boolean) => void
 }
@@ -77,6 +80,7 @@ const initialState: ExtendedState = {
   isLoaded: false,
   gameVersion: 1,
   changedCells: [],
+  currentLocation: { x: 0, y: 0 },
 }
 
 const mergeCellsIntoMap = (
@@ -103,6 +107,10 @@ const reducer = (state: ExtendedState, action: GameAction): ExtendedState => {
       if (!saved) {
         return { ...initialState, isLoaded: true }
       }
+      const currentLocation =
+        saved.currentLocationX !== undefined && saved.currentLocationY !== undefined
+          ? { x: saved.currentLocationX, y: saved.currentLocationY }
+          : { x: 0, y: 0 }
       return {
         ...initialState,
         score: saved.score,
@@ -110,6 +118,7 @@ const reducer = (state: ExtendedState, action: GameAction): ExtendedState => {
         highScore: saved.highScore,
         nextLifeScoreThreshold: saved.nextLifeScoreThreshold,
         gameOver: saved.gameOver,
+        currentLocation,
         isLoaded: true,
       }
     }
@@ -135,13 +144,23 @@ const reducer = (state: ExtendedState, action: GameAction): ExtendedState => {
       const prevCells = state.cells
       const newState = revealCellLogic(state, action.coord, defaultIsMineGenerator, true)
       const changedCells = diffCells(prevCells, newState.cells)
-      return { ...newState, gameVersion: state.gameVersion, changedCells }
+      return {
+        ...newState,
+        gameVersion: state.gameVersion,
+        changedCells,
+        currentLocation: action.coord,
+      }
     }
     case 'TOGGLE_FLAG': {
       const prevCells = state.cells
       const newState = toggleFlagLogic(state, action.coord, defaultIsMineGenerator)
       const changedCells = diffCells(prevCells, newState.cells)
-      return { ...newState, gameVersion: state.gameVersion, changedCells }
+      return {
+        ...newState,
+        gameVersion: state.gameVersion,
+        changedCells,
+        currentLocation: action.coord,
+      }
     }
     case 'SET_HIGH_SCORE': {
       if (action.highScore <= state.highScore) return state
@@ -157,6 +176,7 @@ const GameContext = createContext<GameContextValue | undefined>(undefined)
 const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [isDraggingBoard, setIsDraggingBoard] = useState(false)
+  const [scrollToCurrentLocationToken, setScrollToCurrentLocationToken] = useState(0)
   const loadedChunkKeysRef = useRef<Set<string>>(new Set())
 
   const mergeChunksFromDb = useCallback(
@@ -254,6 +274,8 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       highScore: state.highScore,
       nextLifeScoreThreshold: state.nextLifeScoreThreshold,
       gameOver: state.gameOver,
+      currentLocationX: state.currentLocation.x,
+      currentLocationY: state.currentLocation.y,
     })
   }, [
     state.isLoaded,
@@ -262,6 +284,8 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
     state.highScore,
     state.nextLifeScoreThreshold,
     state.gameOver,
+    state.currentLocation.x,
+    state.currentLocation.y,
   ])
 
   useEffect(() => {
@@ -298,6 +322,10 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
     dispatch({ type: 'RESET' })
   }, [])
 
+  const scrollToCurrentLocation = useCallback(() => {
+    setScrollToCurrentLocationToken((t) => t + 1)
+  }, [])
+
   const value: GameContextValue = useMemo(
     () => ({
       state,
@@ -305,10 +333,21 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       toggleFlag,
       resetGame,
       loadChunksForViewport,
+      scrollToCurrentLocation,
+      scrollToCurrentLocationToken,
       isDraggingBoard,
       setIsDraggingBoard,
     }),
-    [state, revealCell, toggleFlag, resetGame, loadChunksForViewport, isDraggingBoard],
+    [
+      state,
+      revealCell,
+      toggleFlag,
+      resetGame,
+      loadChunksForViewport,
+      scrollToCurrentLocation,
+      scrollToCurrentLocationToken,
+      isDraggingBoard,
+    ],
   )
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>

@@ -9,9 +9,7 @@ import {
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
 import { toCellKey } from '../types/game'
-
-/** 1 セルあたりの表示サイズ（px） */
-const CELL_SIZE = 32
+import { animateOffset, cellCenterToOffset, CELL_SIZE } from '../utils/viewUtils'
 
 /**
  * 無限マインスイーパーの盤面を表示するコンポーネント
@@ -20,9 +18,11 @@ const CELL_SIZE = 32
  * - ホイールでズームイン/アウト
  */
 export const BoardView: React.FC = () => {
-  const { state, setIsDraggingBoard, loadChunksForViewport } = useGame()
+  const { state, setIsDraggingBoard, loadChunksForViewport, scrollToCurrentLocationToken } =
+    useGame()
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
+  const offsetRef = useRef(offset)
   const [scale, setScale] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [isActuallyDragging, setIsActuallyDragging] = useState(false) // ドラッグ中かどうかを判定する新しいステート
@@ -31,6 +31,12 @@ export const BoardView: React.FC = () => {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const isViewInitializedRef = useRef(false)
   const prevGameVersionRef = useRef(state.gameVersion)
+  const prevScrollTokenRef = useRef(0)
+  const cancelAnimationRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    offsetRef.current = offset
+  }, [offset])
 
   useLayoutEffect(() => {
     if (boardContainerRef.current) {
@@ -52,23 +58,59 @@ export const BoardView: React.FC = () => {
     }
   }, [])
 
-  // 初回マウント時、またはゲームリセット時のみ中央に配置（リサイズ時は位置を維持）
+  // 初回マウント時、またはゲームリセット時のみ現在地を中心に配置（リサイズ時は位置を維持）
   useEffect(() => {
     if (containerSize.width <= 0 || containerSize.height <= 0) return
+    if (!state.isLoaded) return
 
     const isGameReset = prevGameVersionRef.current !== state.gameVersion
     const shouldInitialize = !isViewInitializedRef.current || isGameReset
 
     if (!shouldInitialize) return
 
-    const initialOffsetX = containerSize.width / 2 - CELL_SIZE / 2
-    const initialOffsetY = containerSize.height / 2 - CELL_SIZE / 2
+    const { x, y } = state.currentLocation
+    const initialOffset = cellCenterToOffset(
+      x,
+      y,
+      containerSize.width,
+      containerSize.height,
+      1,
+    )
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOffset({ x: initialOffsetX, y: initialOffsetY })
+    setOffset(initialOffset)
     setScale(1)
     isViewInitializedRef.current = true
     prevGameVersionRef.current = state.gameVersion
-  }, [state.gameVersion, containerSize])
+  }, [state.gameVersion, state.isLoaded, state.currentLocation, containerSize])
+
+  // ヘッダーボタンから現在地へスムーズに移動
+  useEffect(() => {
+    if (scrollToCurrentLocationToken === 0) return
+    if (scrollToCurrentLocationToken === prevScrollTokenRef.current) return
+    prevScrollTokenRef.current = scrollToCurrentLocationToken
+
+    if (containerSize.width <= 0 || containerSize.height <= 0) return
+
+    cancelAnimationRef.current?.()
+    const { x, y } = state.currentLocation
+    const targetOffset = cellCenterToOffset(
+      x,
+      y,
+      containerSize.width,
+      containerSize.height,
+      scale,
+    )
+    cancelAnimationRef.current = animateOffset(offsetRef.current, targetOffset, setOffset)
+  }, [
+    scrollToCurrentLocationToken,
+    state.currentLocation,
+    containerSize,
+    scale,
+  ])
+
+  useEffect(() => {
+    return () => cancelAnimationRef.current?.()
+  }, [])
 
   /**
    * 盤面ドラッグ開始時のハンドラ

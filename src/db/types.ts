@@ -21,6 +21,10 @@ export type MetaRecord = {
   highScore: number
   nextLifeScoreThreshold: number
   gameOver: boolean
+  /** 最後に操作したセルの X 座標（旧セーブデータには未設定の場合あり） */
+  currentLocationX?: number
+  /** 最後に操作したセルの Y 座標（旧セーブデータには未設定の場合あり） */
+  currentLocationY?: number
   savedAt: Date
 }
 

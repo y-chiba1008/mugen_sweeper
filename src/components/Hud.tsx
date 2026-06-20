@@ -1,12 +1,13 @@
 import { useGame } from '../context/GameContext'
 import { cn } from '../lib/utils'
+import { Locate } from 'lucide-react'
 
 /**
  * スコア・ライフ・ハイスコアなどの主要情報を表示する HUD コンポーネント
  * 画面上部に固定表示される
  */
 export const Hud: React.FC = () => {
-  const { state, resetGame } = useGame()
+  const { state, resetGame, scrollToCurrentLocation } = useGame()
 
   const isNewHighScoreOnGameOver =
     state.gameOver && state.score > 0 && state.score === state.highScore
@@ -20,7 +21,21 @@ export const Hud: React.FC = () => {
   return (
     <div className="flex items-center justify-between border-b border-slate-700 bg-slate-900/80 px-4 py-2 text-slate-100">
       <div className="flex flex-col items-start gap-1">
-        <div className="text-sm font-semibold">無限マインスイーパー</div>
+        <div className="flex items-center gap-2">
+          <div className="text-sm font-semibold">無限マインスイーパー</div>
+          <button
+            type="button"
+            onClick={scrollToCurrentLocation}
+            title="現在地へ移動"
+            aria-label="現在地へ移動"
+            className={cn(
+              'rounded p-1 text-slate-300',
+              'hover:bg-slate-800 hover:text-white active:bg-slate-700',
+            )}
+          >
+            <Locate size={16} />
+          </button>
+        </div>
         <div className="flex gap-4 text-xs">
           <span>スコア: {state.score}</span>
           <span>ハイスコア: {state.highScore}</span>
