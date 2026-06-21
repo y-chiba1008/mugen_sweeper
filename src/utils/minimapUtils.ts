@@ -1,12 +1,6 @@
-import {
-  COLOR_FLAG_YELLOW,
-  COLOR_MINE_RED,
-  COLOR_OPENED_WHITE,
-  COLOR_UNOPENED_GRAY,
-  COLOR_VIEWPORT_INDICATOR,
-} from '../config/gameConfig'
+import { COLOR_VIEWPORT_INDICATOR } from '../config/gameConfig'
 import type { SerializedCell } from '../db/types'
-import type { ViewportWorldRect } from './viewUtils'
+import { getCellColor, type ViewportWorldRect } from './viewUtils'
 
 export type MinimapLayout = {
   minimapOriginX: number
@@ -70,16 +64,6 @@ export const minimapToWorld = (
   worldX: minimapOriginX + Math.floor(mx / dotSize),
   worldY: minimapOriginY + Math.floor(my / dotSize),
 })
-
-/**
- * セル状態に応じたミニマップ描画色を返す
- */
-export const getCellColor = (cell: MinimapCellInput): string => {
-  if (!cell.revealed) {
-    return cell.flagged ? COLOR_FLAG_YELLOW : COLOR_UNOPENED_GRAY
-  }
-  return cell.isMine ? COLOR_MINE_RED : COLOR_OPENED_WHITE
-}
 
 /**
  * ミニマップ Canvas に全セルを描画する

@@ -1,11 +1,7 @@
-import {
-  COLOR_FLAG_YELLOW,
-  COLOR_OPENED_WHITE,
-  COLOR_UNOPENED_GRAY,
-} from '../config/gameConfig'
 import type { CellState } from '../types/game'
 import { useGame } from '../context/GameContext'
 import { cn } from '../lib/utils'
+import { getCellColor } from '../utils/viewUtils'
 import { memo } from 'react'
 
 /**
@@ -61,11 +57,7 @@ export const Cell: React.FC<CellProps> = memo(({ cell }) => {
     content = '🚩'
   }
 
-  const backgroundColor = cell.revealed
-    ? COLOR_OPENED_WHITE
-    : cell.flagged
-      ? COLOR_FLAG_YELLOW
-      : COLOR_UNOPENED_GRAY
+  const backgroundColor = getCellColor(cell)
 
   return (
     <button

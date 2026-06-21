@@ -1,5 +1,28 @@
+import {
+  COLOR_FLAG_YELLOW,
+  COLOR_MINE_RED,
+  COLOR_OPENED_WHITE,
+  COLOR_UNOPENED_GRAY,
+} from '../config/gameConfig'
+
 /** 1 セルあたりの表示サイズ（px）— BoardView と共有 */
 export const CELL_SIZE = 32
+
+export type CellColorInput = {
+  revealed: boolean
+  flagged: boolean
+  isMine: boolean
+}
+
+/**
+ * セル状態に応じた表示色を返す
+ */
+export const getCellColor = (cell: CellColorInput): string => {
+  if (!cell.revealed) {
+    return cell.flagged ? COLOR_FLAG_YELLOW : COLOR_UNOPENED_GRAY
+  }
+  return cell.isMine ? COLOR_MINE_RED : COLOR_OPENED_WHITE
+}
 
 export type ViewportWorldRect = {
   x: number

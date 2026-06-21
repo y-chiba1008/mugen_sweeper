@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { cellCenterToOffset, getViewportWorldRect } from './viewUtils'
+import {
+  cellCenterToOffset,
+  getCellColor,
+  getViewportWorldRect,
+} from './viewUtils'
+import { COLOR_FLAG_YELLOW, COLOR_OPENED_WHITE, COLOR_UNOPENED_GRAY } from '../config/gameConfig'
 
 describe('viewUtils', () => {
   it('cellCenterToOffset はセル中心をビューポート中央に合わせる', () => {
@@ -12,6 +17,21 @@ describe('viewUtils', () => {
     const offset = cellCenterToOffset(2, 3, 800, 600, 2)
     expect(offset.x).toBe(800 / 2 - (2 * 32 + 16) * 2)
     expect(offset.y).toBe(600 / 2 - (3 * 32 + 16) * 2)
+  })
+
+  it('getCellColor はセル状態に応じた色を返す', () => {
+    expect(getCellColor({ revealed: false, flagged: false, isMine: false })).toBe(
+      COLOR_UNOPENED_GRAY,
+    )
+    expect(getCellColor({ revealed: false, flagged: true, isMine: false })).toBe(
+      COLOR_FLAG_YELLOW,
+    )
+    expect(getCellColor({ revealed: true, flagged: false, isMine: false })).toBe(
+      COLOR_OPENED_WHITE,
+    )
+    expect(getCellColor({ revealed: true, flagged: false, isMine: true })).toBe(
+      '#ef4444',
+    )
   })
 })
 
