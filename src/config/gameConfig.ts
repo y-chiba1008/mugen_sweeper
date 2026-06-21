@@ -22,7 +22,10 @@ export const COLOR_OPENED_WHITE = '#ffffff'
 /** 開封済みセル（地雷）の背景色 */
 export const COLOR_MINE_RED = '#ef4444'
 
+/** ミニマップ上のビューポート表示矩形の外枠線色（背景とのコントラスト確保用） */
+export const COLOR_VIEWPORT_INDICATOR_OUTLINE = '#0f172a'
+
 /** ミニマップ上のビューポート表示矩形の枠線色 */
-export const COLOR_VIEWPORT_INDICATOR = '#38bdf8'
+export const COLOR_VIEWPORT_INDICATOR = '#22d3ee'
 
 

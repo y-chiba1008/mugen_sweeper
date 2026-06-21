@@ -1,4 +1,7 @@
-import { COLOR_VIEWPORT_INDICATOR } from '../config/gameConfig'
+import {
+  COLOR_VIEWPORT_INDICATOR,
+  COLOR_VIEWPORT_INDICATOR_OUTLINE,
+} from '../config/gameConfig'
 import type { SerializedCell } from '../db/types'
 import { getCellColor, type ViewportWorldRect } from './viewUtils'
 
@@ -98,9 +101,20 @@ export const drawViewportIndicator = (
   const rectW = viewportWorldRect.width * dotSize
   const rectH = viewportWorldRect.height * dotSize
 
+  const innerLineWidth = Math.max(2, Math.min(4, dotSize * 0.35))
+  const outerLineWidth = innerLineWidth + 2
+
+  const strokeViewportRect = (): void => {
+    ctx.strokeRect(rectX, rectY, rectW, rectH)
+  }
+
+  ctx.strokeStyle = COLOR_VIEWPORT_INDICATOR_OUTLINE
+  ctx.lineWidth = outerLineWidth
+  strokeViewportRect()
+
   ctx.strokeStyle = COLOR_VIEWPORT_INDICATOR
-  ctx.lineWidth = 1
-  ctx.strokeRect(rectX, rectY, rectW, rectH)
+  ctx.lineWidth = innerLineWidth
+  strokeViewportRect()
 }
 
 /**
