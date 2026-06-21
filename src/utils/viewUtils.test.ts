@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cellCenterToOffset } from './viewUtils'
+import { cellCenterToOffset, getViewportWorldRect } from './viewUtils'
 
 describe('viewUtils', () => {
   it('cellCenterToOffset はセル中心をビューポート中央に合わせる', () => {
@@ -12,5 +12,14 @@ describe('viewUtils', () => {
     const offset = cellCenterToOffset(2, 3, 800, 600, 2)
     expect(offset.x).toBe(800 / 2 - (2 * 32 + 16) * 2)
     expect(offset.y).toBe(600 / 2 - (3 * 32 + 16) * 2)
+  })
+})
+
+describe('getViewportWorldRect', () => {
+  it('中央配置時にビューポート矩形を返す', () => {
+    const offset = cellCenterToOffset(0, 0, 800, 600, 1)
+    const rect = getViewportWorldRect(offset, 1, 800, 600)
+    expect(rect.width).toBeGreaterThan(0)
+    expect(rect.height).toBeGreaterThan(0)
   })
 })

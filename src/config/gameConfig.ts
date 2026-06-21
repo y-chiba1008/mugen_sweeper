@@ -10,4 +10,19 @@ export const GLOBAL_SEED = 123456789
 // セーブデータのバージョン
 export const SAVE_DATA_VERSION = '2.0.0'
 
+/** 未開封セル（旗なし）の背景色 — Tailwind gray-400 に相当 */
+export const COLOR_UNOPENED_GRAY = '#9ca3af'
+
+/** 未開封セル（旗あり）の背景色 */
+export const COLOR_FLAG_YELLOW = '#eab308'
+
+/** 開封済みセル（非地雷）の背景色 */
+export const COLOR_OPENED_WHITE = '#ffffff'
+
+/** 開封済みセル（地雷）の背景色 */
+export const COLOR_MINE_RED = '#ef4444'
+
+/** ミニマップ上のビューポート表示矩形の枠線色 */
+export const COLOR_VIEWPORT_INDICATOR = '#38bdf8'
+
 

@@ -67,6 +67,20 @@ export const saveChunks = async (changedCells: SerializedCell[]): Promise<void> 
 }
 
 /**
+ * IndexedDB の全チャンクからセルを読み込む
+ */
+export const loadAllChunks = async (): Promise<SerializedCell[]> => {
+  if (typeof window === 'undefined') return []
+
+  try {
+    const chunks = await db.chunks.toArray()
+    return chunks.flatMap((c) => c.cells)
+  } catch {
+    return []
+  }
+}
+
+/**
  * セル座標範囲に含まれるチャンクのセルを読み込む
  */
 export const loadChunksInRange = async (

@@ -1,3 +1,8 @@
+import {
+  COLOR_FLAG_YELLOW,
+  COLOR_OPENED_WHITE,
+  COLOR_UNOPENED_GRAY,
+} from '../config/gameConfig'
 import type { CellState } from '../types/game'
 import { useGame } from '../context/GameContext'
 import { cn } from '../lib/utils'
@@ -56,18 +61,25 @@ export const Cell: React.FC<CellProps> = memo(({ cell }) => {
     content = '🚩'
   }
 
+  const backgroundColor = cell.revealed
+    ? COLOR_OPENED_WHITE
+    : cell.flagged
+      ? COLOR_FLAG_YELLOW
+      : COLOR_UNOPENED_GRAY
+
   return (
     <button
       type="button"
       onClick={handleClick}
       onContextMenu={handleRightClick}
       data-testid={`cell-${cell.coord.x}-${cell.coord.y}`}
+      style={{ backgroundColor }}
       className={cn(
         'flex h-[30px] w-[30px] items-center justify-center border-t border-l border-slate-400 text-xs font-bold',
         'select-none',
         cell.revealed
-          ? ['!bg-white', mineCountColor[cell.adjacentMines]]
-          : '!bg-gray-400 hover:!bg-gray-300 active:!bg-gray-200',
+          ? mineCountColor[cell.adjacentMines]
+          : 'hover:brightness-110 active:brightness-95',
       )}
     >
       {content}

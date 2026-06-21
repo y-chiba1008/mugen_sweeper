@@ -52,6 +52,13 @@ type GameAction =
   | { type: 'TOGGLE_FLAG'; coord: CellCoord }
   | { type: 'SET_HIGH_SCORE'; highScore: number }
 
+type BoardViewState = {
+  offset: { x: number; y: number }
+  scale: number
+  containerWidth: number
+  containerHeight: number
+}
+
 /**
  * コンテキスト経由で公開するゲーム状態と操作関数のインターフェース
  */
@@ -62,7 +69,15 @@ type GameContextValue = {
   resetGame: () => Promise<void>
   loadChunksForViewport: (x1: number, y1: number, x2: number, y2: number) => Promise<void>
   scrollToCurrentLocation: () => void
-  scrollToCurrentLocationToken: number
+  scrollViewSmoothlyTo: (coord: CellCoord) => void
+  scrollTargetToken: number
+  scrollTargetCoord: CellCoord | null
+  isMinimapOpen: boolean
+  minimapSessionId: number
+  openMinimap: () => void
+  closeMinimap: () => void
+  boardViewState: BoardViewState | null
+  setBoardViewState: (viewState: BoardViewState) => void
   isDraggingBoard: boolean
   setIsDraggingBoard: (isDragging: boolean) => void
 }
@@ -176,7 +191,11 @@ const GameContext = createContext<GameContextValue | undefined>(undefined)
 const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(reducer, initialState)
   const [isDraggingBoard, setIsDraggingBoard] = useState(false)
-  const [scrollToCurrentLocationToken, setScrollToCurrentLocationToken] = useState(0)
+  const [scrollTargetToken, setScrollTargetToken] = useState(0)
+  const [scrollTargetCoord, setScrollTargetCoord] = useState<CellCoord | null>(null)
+  const [isMinimapOpen, setIsMinimapOpen] = useState(false)
+  const [minimapSessionId, setMinimapSessionId] = useState(0)
+  const [boardViewState, setBoardViewState] = useState<BoardViewState | null>(null)
   const loadedChunkKeysRef = useRef<Set<string>>(new Set())
 
   const mergeChunksFromDb = useCallback(
@@ -322,8 +341,22 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
     dispatch({ type: 'RESET' })
   }, [])
 
+  const scrollViewSmoothlyTo = useCallback((coord: CellCoord) => {
+    setScrollTargetCoord(coord)
+    setScrollTargetToken((t) => t + 1)
+  }, [])
+
   const scrollToCurrentLocation = useCallback(() => {
-    setScrollToCurrentLocationToken((t) => t + 1)
+    scrollViewSmoothlyTo(state.currentLocation)
+  }, [scrollViewSmoothlyTo, state.currentLocation])
+
+  const openMinimap = useCallback(() => {
+    setMinimapSessionId((id) => id + 1)
+    setIsMinimapOpen(true)
+  }, [])
+
+  const closeMinimap = useCallback(() => {
+    setIsMinimapOpen(false)
   }, [])
 
   const value: GameContextValue = useMemo(
@@ -334,7 +367,15 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       resetGame,
       loadChunksForViewport,
       scrollToCurrentLocation,
-      scrollToCurrentLocationToken,
+      scrollViewSmoothlyTo,
+      scrollTargetToken,
+      scrollTargetCoord,
+      isMinimapOpen,
+      minimapSessionId,
+      openMinimap,
+      closeMinimap,
+      boardViewState,
+      setBoardViewState,
       isDraggingBoard,
       setIsDraggingBoard,
     }),
@@ -345,7 +386,14 @@ const GameProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }
       resetGame,
       loadChunksForViewport,
       scrollToCurrentLocation,
-      scrollToCurrentLocationToken,
+      scrollViewSmoothlyTo,
+      scrollTargetToken,
+      scrollTargetCoord,
+      isMinimapOpen,
+      minimapSessionId,
+      openMinimap,
+      closeMinimap,
+      boardViewState,
       isDraggingBoard,
     ],
   )

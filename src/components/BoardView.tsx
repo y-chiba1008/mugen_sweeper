@@ -9,6 +9,7 @@ import {
 import { useGame } from '../context/GameContext'
 import { Cell } from './Cell'
 import { toCellKey } from '../types/game'
+import { cn } from '../lib/utils'
 import { animateOffset, cellCenterToOffset, CELL_SIZE } from '../utils/viewUtils'
 
 /**
@@ -18,8 +19,15 @@ import { animateOffset, cellCenterToOffset, CELL_SIZE } from '../utils/viewUtils
  * - ホイールでズームイン/アウト
  */
 export const BoardView: React.FC = () => {
-  const { state, setIsDraggingBoard, loadChunksForViewport, scrollToCurrentLocationToken } =
-    useGame()
+  const {
+    state,
+    setIsDraggingBoard,
+    loadChunksForViewport,
+    scrollTargetToken,
+    scrollTargetCoord,
+    isMinimapOpen,
+    setBoardViewState,
+  } = useGame()
   const boardContainerRef = useRef<HTMLDivElement>(null)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const offsetRef = useRef(offset)
@@ -33,6 +41,16 @@ export const BoardView: React.FC = () => {
   const prevGameVersionRef = useRef(state.gameVersion)
   const prevScrollTokenRef = useRef(0)
   const cancelAnimationRef = useRef<(() => void) | null>(null)
+
+  useEffect(() => {
+    if (containerSize.width <= 0 || containerSize.height <= 0) return
+    setBoardViewState({
+      offset,
+      scale,
+      containerWidth: containerSize.width,
+      containerHeight: containerSize.height,
+    })
+  }, [offset, scale, containerSize, setBoardViewState])
 
   useEffect(() => {
     offsetRef.current = offset
@@ -76,23 +94,23 @@ export const BoardView: React.FC = () => {
       containerSize.height,
       1,
     )
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOffset(initialOffset)
     setScale(1)
     isViewInitializedRef.current = true
     prevGameVersionRef.current = state.gameVersion
   }, [state.gameVersion, state.isLoaded, state.currentLocation, containerSize])
 
-  // ヘッダーボタンから現在地へスムーズに移動
+  // ヘッダーボタンまたはミニマップから指定座標へスムーズに移動
   useEffect(() => {
-    if (scrollToCurrentLocationToken === 0) return
-    if (scrollToCurrentLocationToken === prevScrollTokenRef.current) return
-    prevScrollTokenRef.current = scrollToCurrentLocationToken
+    if (scrollTargetToken === 0) return
+    if (scrollTargetToken === prevScrollTokenRef.current) return
+    prevScrollTokenRef.current = scrollTargetToken
 
     if (containerSize.width <= 0 || containerSize.height <= 0) return
+    if (!scrollTargetCoord) return
 
     cancelAnimationRef.current?.()
-    const { x, y } = state.currentLocation
+    const { x, y } = scrollTargetCoord
     const targetOffset = cellCenterToOffset(
       x,
       y,
@@ -101,12 +119,7 @@ export const BoardView: React.FC = () => {
       scale,
     )
     cancelAnimationRef.current = animateOffset(offsetRef.current, targetOffset, setOffset)
-  }, [
-    scrollToCurrentLocationToken,
-    state.currentLocation,
-    containerSize,
-    scale,
-  ])
+  }, [scrollTargetToken, scrollTargetCoord, containerSize, scale])
 
   useEffect(() => {
     return () => cancelAnimationRef.current?.()
@@ -116,6 +129,7 @@ export const BoardView: React.FC = () => {
    * 盤面ドラッグ開始時のハンドラ
    */
   const handleMouseDown: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    if (isMinimapOpen) return
     setIsPanning(true)
     setIsActuallyDragging(false) // ドラッグ状態をリセット
     setLastPos({ x: e.clientX, y: e.clientY })
@@ -126,6 +140,7 @@ export const BoardView: React.FC = () => {
    * ドラッグ中のマウス移動をパン操作として扱うハンドラ
    */
   const handleMouseMove: React.MouseEventHandler<HTMLDivElement> = (e) => {
+    if (isMinimapOpen) return
     if (!isPanning || !lastPos) return
 
     const dx = e.clientX - lastPos.x
@@ -179,6 +194,7 @@ export const BoardView: React.FC = () => {
    */
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      if (isMinimapOpen) return
       e.preventDefault()
       if (!boardContainerRef.current) return
 
@@ -196,7 +212,7 @@ export const BoardView: React.FC = () => {
       }))
       setScale(newScale)
     },
-    [scale],
+    [scale, isMinimapOpen],
   )
 
   useEffect(() => {
@@ -266,7 +282,10 @@ export const BoardView: React.FC = () => {
   return (
     <div className="relative h-full w-full overflow-hidden bg-slate-800">
       <div
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        className={cn(
+          'absolute inset-0',
+          isMinimapOpen ? 'pointer-events-none' : 'cursor-grab active:cursor-grabbing',
+        )}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUpOrLeave}

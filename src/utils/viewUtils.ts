@@ -1,6 +1,36 @@
 /** 1 セルあたりの表示サイズ（px）— BoardView と共有 */
 export const CELL_SIZE = 32
 
+export type ViewportWorldRect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * メインビューの現在表示範囲をワールド座標の矩形で返す
+ */
+export const getViewportWorldRect = (
+  offset: { x: number; y: number },
+  scale: number,
+  containerWidth: number,
+  containerHeight: number,
+): ViewportWorldRect => {
+  const scaledCellSize = CELL_SIZE * scale
+  const minX = -offset.x / scaledCellSize
+  const minY = -offset.y / scaledCellSize
+  const maxX = (containerWidth - offset.x) / scaledCellSize
+  const maxY = (containerHeight - offset.y) / scaledCellSize
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
 /**
  * 指定セルをビューポート中央に置くためのオフセットを計算する
  */
