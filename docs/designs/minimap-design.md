@@ -56,7 +56,7 @@
   - 読み込み済み全セルのワールド座標の範囲（最小値・最大値）から、表示すべきワールド座標の幅・高さを算出する
   - モーダルの表示可能領域（画面サイズに応じた最大幅・最大高さ）に対して、上記の幅・高さが収まるように `dotSize` を逆算する（`dotSize = Math.min(maxWidth / worldWidth, maxHeight / worldHeight)`）
   - チャンクが少ない場合は `dotSize` が大きくなり、チャンクが多い場合は小さくなる。最小1pxを下限とする
-  - Canvas の最大サイズは `getMinimapMaxDimensions()`（`src/utils/minimapUtils.ts`）で算出する。モーダルの CSS 制約と一致させる必要がある（詳細は [10. モーダル・Canvas レイアウトの実装注意点](#10-モーダルcanvas-レイアウトの実装注意点)）
+  - Canvas の表示可能領域は、Canvas 親要素を `ResizeObserver` で監視し、実測サイズを `getMinimapMaxDimensionsFromContentRect()`（`src/config/minimapLayout.ts`）に渡して算出する。`getMinimapLayout`（`src/utils/minimapUtils.ts`）で `dotSize` と Canvas サイズを決定する（詳細は [10. モーダル・Canvas レイアウトの実装注意点](#10-モーダルcanvas-レイアウトの実装注意点)）
 
 ### 3.3 セルの色分け（ドット絵スタイル）
 
@@ -240,7 +240,7 @@ ctx.scale(dpr, dpr);
 | 10 | ビューポート範囲をミニマップ上に矩形でオーバーレイ描画する（`drawViewportIndicator`） | 4.5 |
 | 11 | モーダル表示中はメインビューの操作（盤面移動・ズーム）を無効化する | 4.5 |
 | 12 | 高解像度ディスプレイ対応（`devicePixelRatio`）を実装し、描画とクリック判定の座標系を統一する | 5.3 |
-| 13 | モーダル・Canvas のレイアウト同期とウィンドウリサイズ時の再描画を実装する | 10 |
+| 13 | モーダル・Canvas のレイアウト同期と `ResizeObserver` によるリサイズ時の再描画を実装する | 10 |
 | 14 | （将来拡張）チャンクごとのオフスクリーンCanvasキャッシュと差分再描画の仕組みを実装する | 6 |
 | 15 | （将来拡張）新規チャンク出現時のフェードインアニメーションを実装する | 6 |
 
@@ -254,64 +254,91 @@ ctx.scale(dpr, dpr);
 
 ## 10. モーダル・Canvas レイアウトの実装注意点
 
-ミニマップの Canvas サイズは **CSS（モーダルの見た目）** と **JavaScript（`getMinimapMaxDimensions`）** の二箇所で決まる。両者がずれると、Canvas がモーダルからはみ出す。以下は、はみ出しバグの修正で得られた教訓と、今後の実装・改修時のチェックリストである。
+ミニマップのレイアウトは次の3層で構成される。
+
+1. **レイアウト定数**（`src/config/minimapLayout.ts`）— モーダルの最大サイズ・padding などを単一定義元として保持する
+2. **DOM の実測**（`ResizeObserver`）— Canvas 親要素のサイズを監視し、実行時の表示可能領域を取得する
+3. **Canvas サイズ計算**（`getMinimapLayout`）— セル範囲と表示可能領域から `dotSize` と Canvas サイズを決定する
+
+以下は、はみ出しバグの修正で得られた教訓と、今後の実装・改修時のチェックリストである。
 
 ### 10.1 関連ファイル
 
 | ファイル | 役割 |
 |---|---|
-| `src/components/MinimapModal.tsx` | モーダルの DOM 構造・Tailwind クラス・Canvas 描画・`resize` リスナー |
-| `src/utils/minimapUtils.ts` | `getMinimapMaxDimensions` / `getMinimapLayout` などのサイズ計算 |
-| `src/utils/minimapUtils.test.ts` | サイズ計算のユニットテスト |
+| `src/config/minimapLayout.ts` | レイアウト定数・CSS 用スタイル文字列・`getMinimapMaxDimensionsFromContentRect` / `getMinimapMaxDimensionsFromViewport` |
+| `src/config/minimapLayout.test.ts` | レイアウト定数・ビューポート推定のユニットテスト |
+| `src/components/MinimapModal.tsx` | モーダルの DOM 構造・共有定数からの `style` 適用・Canvas 描画・`ResizeObserver` |
+| `src/utils/minimapUtils.ts` | `getMinimapLayout` / 描画・座標変換。`getMinimapMaxDimensions` は SSR・テスト用フォールバック |
+| `src/utils/minimapUtils.test.ts` | `getMinimapLayout` 等と、フォールバック経由の `getMinimapMaxDimensions` のテスト |
 
-### 10.2 二重管理になっている定数（要同期）
+### 10.2 レイアウト定数（単一定義元）
 
-`getMinimapMaxDimensions()` はモーダルの Tailwind クラスを数値で再現している。**モーダルのスタイルを変えたら、必ず `minimapUtils.ts` 側の定数も合わせて更新する。**
+比率・padding などは `src/config/minimapLayout.ts` に集約する。`MinimapModal.tsx` はここから `style` を生成し、Tailwind の任意値クラス（`max-w-[90vw]` 等）との二重管理を避ける。
 
-| `minimapUtils.ts` の定数 | 対応する `MinimapModal.tsx` の指定 | 現在の値 |
+| `minimapLayout.ts` の定数 | 意味 | 現在の値 |
 |---|---|---|
-| `MODAL_VIEWPORT_WIDTH_RATIO` | `max-w-[90vw]` | `0.9` |
-| `MODAL_VIEWPORT_HEIGHT_RATIO` | `max-h-[90vh]` | `0.9` |
-| `MODAL_PADDING_X` | `p-4` の左右合計（16px × 2） | `32` |
-| `MODAL_PADDING_Y` | `p-4` の上下合計（16px × 2） | `32` |
-| `MODAL_HEADER_BLOCK_HEIGHT` | ヘッダー行（`text-sm` + 閉じるボタン）+ `mb-3` | `36` |
+| `MODAL_VIEWPORT_WIDTH_RATIO` | モーダル最大幅（`90vw` 相当） | `0.9` |
+| `MODAL_VIEWPORT_HEIGHT_RATIO` | モーダル最大高さ（`90vh` 相当） | `0.9` |
+| `MODAL_PADDING` | モーダル padding 1 辺（`p-4` 相当） | `16` |
+| `MODAL_PADDING_X` | padding 左右合計 | `32` |
+| `MODAL_PADDING_Y` | padding 上下合計 | `32` |
+| `MODAL_HEADER_BLOCK_HEIGHT` | ヘッダー行 + `mb-3` | `36` |
 
-算出式:
+Canvas 親要素の CSS サイズは次のスタイル文字列から生成する。
+
+- `minimapCanvasAreaMaxWidthStyle` = `calc(90vw - 32px)`
+- `minimapCanvasAreaMaxHeightStyle` = `calc(90vh - 32px - 36px)`
+
+ビューポートからの推定（SSR・テスト用）:
 
 ```
 maxWidth  = floor(innerWidth  × 0.9 − 32)
 maxHeight = floor(innerHeight × 0.9 − 32 − 36)
 ```
 
-いずれも下限は `1px`（`toAvailableDimension`）。**Canvas 用の固定下限（例: 200px）は設けない。** 利用可能領域より大きい下限を設けると、低いウィンドウで下側にはみ出す。
+実行時は `ResizeObserver` で得た Canvas 親要素の実測値を `getMinimapMaxDimensionsFromContentRect` に渡す。いずれも下限は `1px`（`toAvailableDimension`）。**Canvas 用の固定下限（例: 200px）は設けない。** 利用可能領域より大きい下限を設けると、低いウィンドウで下側にはみ出す。
+
+モーダル本体と Canvas 親要素には `overflow-hidden` を付与している。はみ出しの視覚的抑制用であり、サイズ計算の代替ではない。
 
 ### 10.3 モーダルスタイル変更時の手順
 
-1. `MinimapModal.tsx` のクラス（`max-w-*` / `max-h-*` / `p-*` / ヘッダー周りの余白）を変更する
-2. `minimapUtils.ts` の対応定数を同じ意味になるよう更新する
-3. `minimapUtils.test.ts` の `getMinimapMaxDimensions` テストを、代表的なウィンドウサイズで更新する
-4. 実機または DevTools で以下を確認する
+1. `minimapLayout.ts` の定数（および必要なら `minimapCanvasAreaMax*Style` の生成式）を更新する
+2. `MinimapModal.tsx` でヘッダー周りの DOM 構造・余白を変えた場合は `MODAL_HEADER_BLOCK_HEIGHT` も合わせて見直す
+3. `minimapLayout.test.ts` の代表値テストを更新する（`getMinimapMaxDimensionsFromViewport` が主）
+4. `minimapUtils.test.ts` の `getMinimapMaxDimensions` テストも、フォールバック経路の回帰防止のため更新する
+5. 実機または DevTools で以下を確認する
    - モーダルを開いた直後に Canvas がはみ出さないこと
    - **モーダルを開いたまま**ウィンドウを縮めても Canvas が追従すること
 
-### 10.4 ウィンドウリサイズ時の再描画
+### 10.4 リサイズ時の再描画
 
-Canvas の `style.width` / `style.height` は初回描画時に一度セットされるだけでは不十分。モーダルは `max-h-[90vh]` によりウィンドウに連動して縮むが、Canvas は自動では追従しない。
+Canvas の `style.width` / `style.height` は初回描画時に一度セットされるだけでは不十分。モーダルは `90vh` 制約によりウィンドウに連動して縮むが、Canvas は自動では追従しない。
 
-`MinimapContent` では `window` の `resize` イベントで `drawToCanvas` を再実行し、`getMinimapMaxDimensions` → `getMinimapLayout` → Canvas リサイズ・再描画の一連を走らせる。**リサイズリスナーの追加・削除を忘れないこと**（モーダルがアンマウントされたら `removeEventListener` する）。
+`MinimapContent` では Canvas 親要素（`data-testid="minimap-canvas-container"`）に `ResizeObserver` を付け、サイズ変化のたびに次の一連を走らせる。
+
+```
+ResizeObserver
+  → getMinimapMaxDimensionsFromContentRect（実測 width / height）
+  → getMinimapLayout
+  → Canvas リサイズ・再描画
+```
+
+**`observer.disconnect()` をアンマウント時に忘れないこと。** 以前の `window.resize` リスナーは `ResizeObserver` に置き換え済みである。
 
 ### 10.5 発生しやすい不具合パターン
 
 | 症状 | 典型原因 |
 |---|---|
-| 横幅を縮めるとはみ出す | `getMinimapMaxDimensions` が `innerWidth − 固定px` など、モーダルの `90vw` 制約を無視している |
+| 横幅を縮めるとはみ出す | Canvas 親要素の CSS 制約と `minimapLayout.ts` の定数が不一致 |
 | 縦幅が低いウィンドウで下にはみ出す | Canvas の最小サイズがモーダルの利用可能高さを上回っている |
-| 開いた後にリサイズするとはみ出す | `resize` 時に `drawToCanvas` が呼ばれていない |
+| 開いた後にリサイズするとはみ出す | `ResizeObserver` が未接続、またはコールバック内で `drawToCanvas` が呼ばれていない |
 | ヘッダーを足した・余白を変えた後にはみ出す | `MODAL_HEADER_BLOCK_HEIGHT` または `MODAL_PADDING_*` の更新漏れ |
+| 初回描画でサイズが 0 になる | Canvas 親要素の ref 未設定、またはコンテナの CSS サイズ未適用 |
 
 ### 10.6 テストで押さえるべきケース
 
-`minimapUtils.test.ts` に以下のような代表値を入れておくと regressions を防ぎやすい。
+`minimapLayout.test.ts` の `getMinimapMaxDimensionsFromViewport` に以下のような代表値を入れておくと regressions を防ぎやすい。`minimapUtils.test.ts` の `getMinimapMaxDimensions` は同じ期待値でフォールバック経路を検証する。
 
 | `innerWidth` | `innerHeight` | 期待する `maxWidth` | 期待する `maxHeight` | 意図 |
 |---|---|---|---|---|
@@ -319,10 +346,4 @@ Canvas の `style.width` / `style.height` は初回描画時に一度セット�
 | `500` | `232` | `418` | `140` | 低いウィンドウ（固定下限があると破綻するケース） |
 | `100` | `100` | `58` | `22` | 極小ウィンドウでも 1px 以上を返すこと |
 
-### 10.7 将来の改善案（任意）
-
-現状は「モーダルの CSS を JS 定数で複製する」方式のため、変更時の同期コストが残る。改修規模に余裕がある場合は次を検討できる。
-
-- **定数の共通化**: `src/config/minimapLayout.ts` などに比率・padding を一箇所定義し、コメントで Tailwind クラスとの対応を明記する
-- **ResizeObserver**: モーダル本体（または Canvas の親要素）を監視し、実測の `contentRect` を `getMinimapLayout` に渡す（`window.innerWidth` ベースの推定より正確）
-- **`overflow-hidden`**: モーダルに付与すればはみ出しは見えなくなるが、**根本原因のサイズ不一致は残る**ため、あくまで補助的手段とする
+加えて `getMinimapMaxDimensionsFromContentRect` では、実測値の小数切り捨てと `1px` 下限をテストする。
