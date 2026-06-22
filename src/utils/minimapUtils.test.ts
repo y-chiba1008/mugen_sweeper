@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   getMinimapLayout,
+  getMinimapMaxDimensions,
   minimapToWorld,
 } from './minimapUtils'
 
@@ -38,5 +39,29 @@ describe('minimapUtils', () => {
     const { worldX, worldY } = minimapToWorld(150, 50, 0, 0, 100)
     expect(worldX).toBe(1)
     expect(worldY).toBe(0)
+  })
+
+  it('getMinimapMaxDimensions はモーダルの 90vw / 90vh 制約に合わせたサイズを返す', () => {
+    vi.stubGlobal('innerWidth', 800)
+    vi.stubGlobal('innerHeight', 600)
+
+    const { maxWidth, maxHeight } = getMinimapMaxDimensions()
+
+    expect(maxWidth).toBe(688)
+    expect(maxHeight).toBe(472)
+  })
+
+  it('getMinimapMaxDimensions は極小ウィンドウでも下限サイズを保証する', () => {
+    vi.stubGlobal('innerWidth', 100)
+    vi.stubGlobal('innerHeight', 100)
+
+    const { maxWidth, maxHeight } = getMinimapMaxDimensions()
+
+    expect(maxWidth).toBe(200)
+    expect(maxHeight).toBe(200)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 })

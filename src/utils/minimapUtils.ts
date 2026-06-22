@@ -117,6 +117,17 @@ export const drawViewportIndicator = (
   strokeViewportRect()
 }
 
+/** MinimapModal の max-w-[90vw] / max-h-[90vh] と一致させる */
+const MODAL_VIEWPORT_WIDTH_RATIO = 0.9
+const MODAL_VIEWPORT_HEIGHT_RATIO = 0.9
+/** p-4 の左右合計 */
+const MODAL_PADDING_X = 32
+/** p-4 の上下合計 */
+const MODAL_PADDING_Y = 32
+/** ヘッダー行 + mb-3 */
+const MODAL_HEADER_BLOCK_HEIGHT = 36
+const MINIMAP_MIN_DIMENSION = 200
+
 /**
  * モーダル内 Canvas の表示可能領域の最大サイズを算出する
  */
@@ -125,11 +136,14 @@ export const getMinimapMaxDimensions = (): { maxWidth: number; maxHeight: number
     return { maxWidth: 800, maxHeight: 600 }
   }
 
-  const horizontalPadding = 64
-  const verticalPadding = 160
-
   return {
-    maxWidth: Math.max(200, window.innerWidth - horizontalPadding),
-    maxHeight: Math.max(200, window.innerHeight - verticalPadding),
+    maxWidth: Math.max(
+      MINIMAP_MIN_DIMENSION,
+      window.innerWidth * MODAL_VIEWPORT_WIDTH_RATIO - MODAL_PADDING_X,
+    ),
+    maxHeight: Math.max(
+      MINIMAP_MIN_DIMENSION,
+      window.innerHeight * MODAL_VIEWPORT_HEIGHT_RATIO - MODAL_PADDING_Y - MODAL_HEADER_BLOCK_HEIGHT,
+    ),
   }
 }
