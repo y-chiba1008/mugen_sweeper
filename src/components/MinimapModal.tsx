@@ -107,6 +107,17 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
     drawToCanvas(cells)
   }, [cells, drawToCanvas])
 
+  useEffect(() => {
+    if (!cells || cells.length === 0) return
+
+    const handleResize = () => {
+      drawToCanvas(cells)
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [cells, drawToCanvas])
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const layout = layoutRef.current
     const canvas = canvasRef.current
