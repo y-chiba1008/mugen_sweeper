@@ -51,14 +51,24 @@ describe('minimapUtils', () => {
     expect(maxHeight).toBe(472)
   })
 
-  it('getMinimapMaxDimensions は極小ウィンドウでも下限サイズを保証する', () => {
+  it('getMinimapMaxDimensions は低いウィンドウでもモーダル内に収まる高さを返す', () => {
+    vi.stubGlobal('innerWidth', 500)
+    vi.stubGlobal('innerHeight', 232)
+
+    const { maxWidth, maxHeight } = getMinimapMaxDimensions()
+
+    expect(maxWidth).toBe(418)
+    expect(maxHeight).toBe(140)
+  })
+
+  it('getMinimapMaxDimensions は極小ウィンドウでも 1px 以上を返す', () => {
     vi.stubGlobal('innerWidth', 100)
     vi.stubGlobal('innerHeight', 100)
 
     const { maxWidth, maxHeight } = getMinimapMaxDimensions()
 
-    expect(maxWidth).toBe(200)
-    expect(maxHeight).toBe(200)
+    expect(maxWidth).toBe(58)
+    expect(maxHeight).toBe(22)
   })
 
   afterEach(() => {
