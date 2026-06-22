@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { getMinimapMaxDimensionsFromViewport } from '../config/minimapLayout'
 import {
   getMinimapLayout,
   getMinimapMaxDimensions,
@@ -69,6 +70,13 @@ describe('minimapUtils', () => {
 
     expect(maxWidth).toBe(58)
     expect(maxHeight).toBe(22)
+  })
+
+  it('getMinimapMaxDimensionsFromViewport はビューポートから直接算出できる', () => {
+    const { maxWidth, maxHeight } = getMinimapMaxDimensionsFromViewport(800, 600)
+
+    expect(maxWidth).toBe(688)
+    expect(maxHeight).toBe(472)
   })
 
   afterEach(() => {

@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import { useGame } from '../context/GameContext'
+import {
+  MODAL_PADDING,
+  getMinimapMaxDimensionsFromContentRect,
+  minimapCanvasAreaMaxHeightStyle,
+  minimapCanvasAreaMaxWidthStyle,
+  minimapModalMaxHeightStyle,
+  minimapModalMaxWidthStyle,
+} from '../config/minimapLayout'
 import type { SerializedCell } from '../db/types'
 import { cellToSerialized } from '../utils/chunkUtils'
 import {
   drawMinimap,
   drawViewportIndicator,
   getMinimapLayout,
-  getMinimapMaxDimensions,
   minimapToWorld,
 } from '../utils/minimapUtils'
 import { loadAllChunks } from '../utils/storage'
@@ -25,8 +32,10 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
   const { scrollViewSmoothlyTo, boardViewState, state } = useGame()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
   const layoutRef = useRef<ReturnType<typeof getMinimapLayout>>(null)
   const viewportRectRef = useRef<ReturnType<typeof getViewportWorldRect> | null>(null)
+  const cellsRef = useRef<SerializedCell[] | null>(null)
   const [cells, setCells] = useState<SerializedCell[] | null>(null)
 
   const mergeCellsForMinimap = useCallback(async (): Promise<SerializedCell[]> => {
@@ -42,11 +51,10 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
     return [...cellMap.values()]
   }, [state.cells])
 
-  const drawToCanvas = useCallback((allCells: SerializedCell[]) => {
+  const drawToCanvas = useCallback((allCells: SerializedCell[], maxWidth: number, maxHeight: number) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const { maxWidth, maxHeight } = getMinimapMaxDimensions()
     const layout = getMinimapLayout(allCells, maxWidth, maxHeight)
     if (!layout) return
 
@@ -78,6 +86,16 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
     }
   }, [])
 
+  const redrawFromContainer = useCallback(() => {
+    const container = canvasContainerRef.current
+    const allCells = cellsRef.current
+    if (!container || !allCells || allCells.length === 0) return
+
+    const { width, height } = container.getBoundingClientRect()
+    const { maxWidth, maxHeight } = getMinimapMaxDimensionsFromContentRect(width, height)
+    drawToCanvas(allCells, maxWidth, maxHeight)
+  }, [drawToCanvas])
+
   useEffect(() => {
     if (boardViewState) {
       viewportRectRef.current = getViewportWorldRect(
@@ -94,6 +112,7 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
 
     void mergeCellsForMinimap().then((allCells) => {
       if (cancelled) return
+      cellsRef.current = allCells
       setCells(allCells)
     })
 
@@ -103,20 +122,24 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
   }, [mergeCellsForMinimap])
 
   useEffect(() => {
-    if (!cells || cells.length === 0) return
-    drawToCanvas(cells)
-  }, [cells, drawToCanvas])
+    cellsRef.current = cells
+  }, [cells])
 
   useEffect(() => {
     if (!cells || cells.length === 0) return
 
-    const handleResize = () => {
-      drawToCanvas(cells)
-    }
+    redrawFromContainer()
 
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [cells, drawToCanvas])
+    const container = canvasContainerRef.current
+    if (!container) return
+
+    const observer = new ResizeObserver(() => {
+      redrawFromContainer()
+    })
+    observer.observe(container)
+
+    return () => observer.disconnect()
+  }, [cells, redrawFromContainer])
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const layout = layoutRef.current
@@ -148,12 +171,23 @@ const MinimapContent: React.FC<MinimapContentProps> = ({ onClose }) => {
   }
 
   return (
-    <canvas
-      ref={canvasRef}
-      onClick={handleCanvasClick}
-      className="cursor-crosshair rounded border border-slate-700"
-      data-testid="minimap-canvas"
-    />
+    <div
+      ref={canvasContainerRef}
+      className="flex w-full items-center justify-center overflow-hidden"
+      style={{
+        width: minimapCanvasAreaMaxWidthStyle,
+        maxWidth: '100%',
+        height: minimapCanvasAreaMaxHeightStyle,
+      }}
+      data-testid="minimap-canvas-container"
+    >
+      <canvas
+        ref={canvasRef}
+        onClick={handleCanvasClick}
+        className="cursor-crosshair rounded border border-slate-700"
+        data-testid="minimap-canvas"
+      />
+    </div>
   )
 }
 
@@ -186,9 +220,14 @@ export const MinimapModal: React.FC = () => {
     >
       <div
         className={cn(
-          'relative flex max-h-[90vh] max-w-[90vw] flex-col items-center',
-          'rounded-lg border border-slate-600 bg-slate-900 p-4 shadow-xl',
+          'relative flex flex-col items-center overflow-hidden',
+          'rounded-lg border border-slate-600 bg-slate-900 shadow-xl',
         )}
+        style={{
+          maxWidth: minimapModalMaxWidthStyle,
+          maxHeight: minimapModalMaxHeightStyle,
+          padding: MODAL_PADDING,
+        }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"

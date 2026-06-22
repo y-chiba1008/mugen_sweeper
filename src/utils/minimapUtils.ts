@@ -2,6 +2,7 @@ import {
   COLOR_VIEWPORT_INDICATOR,
   COLOR_VIEWPORT_INDICATOR_OUTLINE,
 } from '../config/gameConfig'
+import { getMinimapMaxDimensionsFromViewport } from '../config/minimapLayout'
 import type { SerializedCell } from '../db/types'
 import { getCellColor, type ViewportWorldRect } from './viewUtils'
 
@@ -117,35 +118,14 @@ export const drawViewportIndicator = (
   strokeViewportRect()
 }
 
-/** MinimapModal の max-w-[90vw] / max-h-[90vh] と一致させる */
-const MODAL_VIEWPORT_WIDTH_RATIO = 0.9
-const MODAL_VIEWPORT_HEIGHT_RATIO = 0.9
-/** p-4 の左右合計 */
-const MODAL_PADDING_X = 32
-/** p-4 の上下合計 */
-const MODAL_PADDING_Y = 32
-/** ヘッダー行 + mb-3 */
-const MODAL_HEADER_BLOCK_HEIGHT = 36
-
-const toAvailableDimension = (available: number): number => Math.max(1, Math.floor(available))
-
 /**
- * モーダル内 Canvas の表示可能領域の最大サイズを算出する
+ * モーダル内 Canvas の表示可能領域の最大サイズを算出する（ビューポート推定・SSR フォールバック）
+ * 実行時は MinimapModal の ResizeObserver による実測を優先すること
  */
 export const getMinimapMaxDimensions = (): { maxWidth: number; maxHeight: number } => {
   if (typeof window === 'undefined') {
-    return { maxWidth: 800, maxHeight: 600 }
+    return getMinimapMaxDimensionsFromViewport(800, 600)
   }
 
-  const availableWidth =
-    window.innerWidth * MODAL_VIEWPORT_WIDTH_RATIO - MODAL_PADDING_X
-  const availableHeight =
-    window.innerHeight * MODAL_VIEWPORT_HEIGHT_RATIO -
-    MODAL_PADDING_Y -
-    MODAL_HEADER_BLOCK_HEIGHT
-
-  return {
-    maxWidth: toAvailableDimension(availableWidth),
-    maxHeight: toAvailableDimension(availableHeight),
-  }
+  return getMinimapMaxDimensionsFromViewport(window.innerWidth, window.innerHeight)
 }
