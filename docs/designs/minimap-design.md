@@ -55,7 +55,7 @@
 - モーダルのサイズ（Canvasの表示領域）は固定値ではなく、モーダルを開いた時点で現在読み込み済みの全チャンクが収まるように動的に決定する。スクロールは不要とする
   - 読み込み済み全セルのワールド座標の範囲（最小値・最大値）から、表示すべきワールド座標の幅・高さを算出する
   - モーダルの表示可能領域（画面サイズに応じた最大幅・最大高さ）に対して、上記の幅・高さが収まるように `dotSize` を逆算する（`dotSize = Math.min(maxWidth / worldWidth, maxHeight / worldHeight)`）
-  - チャンクが少ない場合は `dotSize` が大きくなり、チャンクが多い場合は小さくなる。最小1pxを下限とする
+  - チャンクが少ない場合は `dotSize` が大きくなり、チャンクが多い場合は小さくなる。**`dotSize` に下限は設けない**（1px 未満の小数も許容）。下限を設けると、盤面が表示領域より大きい場合に Canvas がはみ出して上下左右が見切れるため（Issue #17）
   - Canvas の表示可能領域は、Canvas 親要素を `ResizeObserver` で監視し、実測サイズを `getMinimapMaxDimensionsFromContentRect()`（`src/config/minimapLayout.ts`）に渡して算出する。`getMinimapLayout`（`src/utils/minimapUtils.ts`）で `dotSize` と Canvas サイズを決定する（詳細は [10. モーダル・Canvas レイアウトの実装注意点](#10-モーダルcanvas-レイアウトの実装注意点)）
 
 ### 3.3 セルの色分け（ドット絵スタイル）
@@ -102,10 +102,7 @@ function getMinimapLayout(allCells, maxWidth, maxHeight) {
   const worldWidth = Math.max(...xs) - minX + 1;
   const worldHeight = Math.max(...ys) - minY + 1;
 
-  const dotSize = Math.max(
-    1,
-    Math.min(maxWidth / worldWidth, maxHeight / worldHeight)
-  );
+  const dotSize = Math.min(maxWidth / worldWidth, maxHeight / worldHeight);
 
   return { minimapOriginX: minX, minimapOriginY: minY, dotSize };
 }
