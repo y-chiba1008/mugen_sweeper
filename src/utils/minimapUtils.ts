@@ -44,7 +44,8 @@ export const getMinimapLayout = (
   const worldWidth = maxX - minX + 1
   const worldHeight = maxY - minY + 1
 
-  const dotSize = Math.max(1, Math.min(maxWidth / worldWidth, maxHeight / worldHeight))
+  // 下限は設けない。盤面が大きい場合は 1px 未満になっても全体を表示領域に収める（Issue #17）
+  const dotSize = Math.min(maxWidth / worldWidth, maxHeight / worldHeight)
 
   return {
     minimapOriginX: minX,

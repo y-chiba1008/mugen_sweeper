@@ -24,7 +24,7 @@ describe('minimapUtils', () => {
     expect(layout?.displayHeight).toBe(300)
   })
 
-  it('getMinimapLayout は dotSize の下限を 1px とする', () => {
+  it('getMinimapLayout は盤面が非常に大きくても表示領域に収まる（dotSize が 1px 未満になる）', () => {
     const manyCells = Array.from({ length: 500 }, (_, i) => ({
       x: i,
       y: 0,
@@ -33,7 +33,22 @@ describe('minimapUtils', () => {
       isMine: false,
     }))
     const layout = getMinimapLayout(manyCells, 100, 100)
-    expect(layout?.dotSize).toBe(1)
+    expect(layout?.dotSize).toBeCloseTo(0.2)
+    expect(layout?.displayWidth).toBeCloseTo(100)
+    expect(layout?.displayHeight).toBeLessThanOrEqual(100)
+  })
+
+  it('getMinimapLayout は縦に長い盤面でも高さが表示領域に収まる', () => {
+    const tallCells = Array.from({ length: 2000 }, (_, i) => ({
+      x: i % 10,
+      y: Math.floor(i / 10) * 5,
+      revealed: true,
+      flagged: false,
+      isMine: false,
+    }))
+    const layout = getMinimapLayout(tallCells, 800, 400)
+    expect(layout?.displayHeight).toBeLessThanOrEqual(400 + 1e-6)
+    expect(layout?.displayWidth).toBeLessThanOrEqual(800 + 1e-6)
   })
 
   it('minimapToWorld はクリック座標をワールド座標に変換する', () => {
