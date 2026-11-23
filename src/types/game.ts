@@ -43,6 +43,8 @@ export type CellState = {
   revealed: boolean
   /** プレイヤーによりフラグが立てられているかどうか */
   flagged: boolean
+  /** プレイヤーにより「？」マークが付けられているかどうか（旧データには未設定の場合あり） */
+  questioned?: boolean
 }
 
 /**

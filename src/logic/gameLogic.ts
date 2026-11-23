@@ -255,7 +255,12 @@ const _toggleFlag = (
     return { ...state, cells }
   }
 
-  const updatedCell = { ...cell, flagged: !cell.flagged }
+  // なし → 旗 → ？ → なし の順に切り替える
+  const updatedCell: CellState = cell.flagged
+    ? { ...cell, flagged: false, questioned: true }
+    : cell.questioned
+      ? { ...cell, questioned: false }
+      : { ...cell, flagged: true }
   cells.set(toCellKey(coord), updatedCell)
   return { ...state, cells }
 }
