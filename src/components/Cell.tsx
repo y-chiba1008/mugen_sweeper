@@ -55,6 +55,8 @@ export const Cell: React.FC<CellProps> = memo(({ cell }) => {
     }
   } else if (cell.flagged) {
     content = '🚩'
+  } else if (cell.questioned) {
+    content = '❓'
   }
 
   const backgroundColor = getCellColor(cell)

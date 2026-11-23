@@ -13,6 +13,7 @@ export const cellToSerialized = (cell: CellState): SerializedCell => ({
   adjacentMines: cell.adjacentMines,
   revealed: cell.revealed,
   flagged: cell.flagged,
+  ...(cell.questioned ? { questioned: true } : {}),
 })
 
 export const serializedToCell = (s: SerializedCell): CellState => ({
@@ -21,6 +22,7 @@ export const serializedToCell = (s: SerializedCell): CellState => ({
   adjacentMines: s.adjacentMines,
   revealed: s.revealed,
   flagged: s.flagged,
+  ...(s.questioned ? { questioned: true } : {}),
 })
 
 export const groupCellsByChunk = (
@@ -61,7 +63,8 @@ export const diffCells = (
       prevCell.isMine !== cell.isMine ||
       prevCell.adjacentMines !== cell.adjacentMines ||
       prevCell.revealed !== cell.revealed ||
-      prevCell.flagged !== cell.flagged
+      prevCell.flagged !== cell.flagged ||
+      (prevCell.questioned ?? false) !== (cell.questioned ?? false)
     ) {
       changed.push(cellToSerialized(cell))
     }

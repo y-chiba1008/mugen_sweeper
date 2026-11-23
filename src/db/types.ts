@@ -8,6 +8,8 @@ export type SerializedCell = {
   adjacentMines: number
   revealed: boolean
   flagged: boolean
+  /** 「？」マークの有無（旧セーブデータには未設定の場合あり） */
+  questioned?: boolean
 }
 
 /**

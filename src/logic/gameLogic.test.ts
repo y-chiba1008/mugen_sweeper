@@ -123,6 +123,26 @@ describe('gameLogic', () => {
       expect(newState.cells.get(toCellKey(coord))?.flagged).toBe(false)
     })
 
+    it('旗 → ？ → なし の順に切り替わる', () => {
+      const coord = { x: 0, y: 0 }
+      const key = toCellKey(coord)
+      const s1 = toggleFlag(createInitialState(), coord, neverMine)
+      expect(s1.cells.get(key)?.flagged).toBe(true)
+      const s2 = toggleFlag(s1, coord, neverMine)
+      expect(s2.cells.get(key)?.flagged).toBe(false)
+      expect(s2.cells.get(key)?.questioned).toBe(true)
+      const s3 = toggleFlag(s2, coord, neverMine)
+      expect(s3.cells.get(key)?.flagged).toBe(false)
+      expect(s3.cells.get(key)?.questioned).toBe(false)
+    })
+
+    it('？マークのセルは開けられる', () => {
+      const coord = { x: 0, y: 0 }
+      const s1 = toggleFlag(toggleFlag(createInitialState(), coord, neverMine), coord, neverMine)
+      const s2 = revealCell(s1, coord, neverMine)
+      expect(s2.cells.get(toCellKey(coord))?.revealed).toBe(true)
+    })
+
     it('開示済みのセルにはフラグを立てられない', () => {
       const coord = { x: 0, y: 0 }
       const cells = new Map<CellKey, CellState>()
